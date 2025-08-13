@@ -89,8 +89,8 @@ export default function ProfilePage() {
       
       if (snapshot.exists()) {
         const usersData = snapshot.val();
-        const isTaken = Object.keys(usersData).some(key => key !== user.uid);
-        if (isTaken) {
+        const existingUserId = Object.keys(usersData)[0];
+        if (existingUserId !== user.uid) {
             form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
             setIsSubmitting(false);
             return;
