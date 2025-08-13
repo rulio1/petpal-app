@@ -6,6 +6,10 @@ export interface Pet {
   lastFed: string;
   imageUrl: string;
   healthStatus: string;
+  description: string;
+  height: number;
+  weight: number;
+  length: number;
 }
 
 export interface CommunityPost {

@@ -1,20 +1,39 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PetCard } from '@/components/pet-card';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import type { Pet } from '@/lib/types';
-
-const initialPets: Pet[] = [
-  { id: '1', name: 'Buddy', species: 'Dog', age: 5, lastFed: '8:00 AM', imageUrl: 'https://placehold.co/400x300.png', healthStatus: 'Healthy' },
-  { id: '2', name: 'Lucy', species: 'Cat', age: 3, lastFed: '8:30 AM', imageUrl: 'https://placehold.co/400x300.png', healthStatus: 'Monitor' },
-  { id: '3', name: 'Rocky', species: 'Turtle', age: 15, lastFed: 'Yesterday', imageUrl: 'https://placehold.co/400x300.png', healthStatus: 'Healthy' },
-];
+import { db } from '@/lib/firebase';
+import { ref, onValue } from "firebase/database";
 
 export default function DashboardPage() {
-  const [pets, setPets] = useState<Pet[]>(initialPets);
+  const [pets, setPets] = useState<Pet[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const petsRef = ref(db, 'pets');
+    const unsubscribe = onValue(petsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const petList = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        }));
+        setPets(petList);
+      } else {
+        setPets([]);
+      }
+      setLoading(false);
+    }, (error) => {
+      console.error("Firebase read failed: " + error.message);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
+  }, []);
 
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -28,7 +47,11 @@ export default function DashboardPage() {
         </Button>
       </div>
 
-      {pets.length > 0 ? (
+      {loading ? (
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      ) : pets.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
           {pets.map((pet) => (
             <PetCard key={pet.id} pet={pet} />

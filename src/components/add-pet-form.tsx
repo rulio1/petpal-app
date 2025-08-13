@@ -12,9 +12,12 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, Upload } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getPetHealthSuggestions } from '@/ai/flows/pet-health-suggestions';
+import { db, storage } from '@/lib/firebase';
+import { ref as dbRef, push, set } from "firebase/database";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const petFormSchema = z.object({
   name: z.string().min(2, 'Name must be at least 2 characters.'),
@@ -26,6 +29,7 @@ const petFormSchema = z.object({
   length: z.coerce.number().min(0, 'Length must be a positive number.'),
   description: z.string().min(10, 'Description must be at least 10 characters.'),
   healthStatus: z.string().min(1, 'Health status is required.'),
+  image: z.any().refine((files) => files?.length == 1, "Image is required."),
 });
 
 type PetFormValues = z.infer<typeof petFormSchema>;
@@ -34,6 +38,7 @@ export function AddPetForm() {
   const router = useRouter();
   const { toast } = useToast();
   const [isAiLoading, setIsAiLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [aiSuggestion, setAiSuggestion] = useState<string | null>(null);
 
   const form = useForm<PetFormValues>({
@@ -49,6 +54,8 @@ export function AddPetForm() {
       healthStatus: '',
     },
   });
+  
+  const imageRef = form.register("image");
 
   const handleGetHealthSuggestion = async () => {
     const description = form.getValues('description');
@@ -81,13 +88,43 @@ export function AddPetForm() {
     }
   };
 
-  function onSubmit(data: PetFormValues) {
-    console.log(data);
-    toast({
-      title: 'Pet Added!',
-      description: `${data.name} has been successfully added to your dashboard.`,
-    });
-    router.push('/dashboard');
+  async function onSubmit(data: PetFormValues) {
+    setIsSubmitting(true);
+    try {
+      const imageFile = data.image[0];
+      const imageStorageRef = storageRef(storage, `pets/${new Date().getTime()}_${imageFile.name}`);
+      const snapshot = await uploadBytes(imageStorageRef, imageFile);
+      const imageUrl = await getDownloadURL(snapshot.ref);
+
+      const newPetRef = push(dbRef(db, 'pets'));
+      await set(newPetRef, {
+        name: data.name,
+        species: data.species,
+        age: data.age,
+        lastFed: data.lastFed,
+        height: data.height,
+        weight: data.weight,
+        length: data.length,
+        description: data.description,
+        healthStatus: data.healthStatus,
+        imageUrl: imageUrl,
+      });
+
+      toast({
+        title: 'Pet Added!',
+        description: `${data.name} has been successfully added to your dashboard.`,
+      });
+      router.push('/dashboard');
+    } catch (error) {
+        console.error("Error adding pet:", error);
+        toast({
+            variant: "destructive",
+            title: "Failed to add pet",
+            description: "An error occurred while adding the pet. Please try again.",
+        });
+    } finally {
+        setIsSubmitting(false);
+    }
   }
 
   return (
@@ -99,6 +136,21 @@ export function AddPetForm() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+            <FormField
+              control={form.control}
+              name="image"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Pet Photo</FormLabel>
+                  <FormControl>
+                    <div className="flex items-center gap-4">
+                      <Input id="image" type="file" accept="image/*" {...imageRef} />
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               <FormField
                 control={form.control}
@@ -256,7 +308,10 @@ export function AddPetForm() {
 
             <div className="flex justify-end space-x-2 pt-6">
               <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
-              <Button type="submit">Add Pet</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                Add Pet
+              </Button>
             </div>
           </form>
         </Form>

@@ -12,7 +12,9 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
-import { Send } from 'lucide-react';
+import { Send, Loader2 } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
 
 const postSchema = z.object({
   content: z.string().min(1, 'Post cannot be empty.').max(500, 'Post cannot exceed 500 characters.'),
@@ -26,16 +28,28 @@ const currentUser = {
 
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const savedPosts = localStorage.getItem('community-posts');
-      if (savedPosts) {
-        setPosts(JSON.parse(savedPosts));
+    const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
+    const unsubscribe = onValue(postsRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const postList: CommunityPost[] = Object.keys(data).map(key => ({
+          id: key,
+          ...data[key]
+        })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setPosts(postList);
+      } else {
+        setPosts([]);
       }
-    } catch (error) {
-      console.error("Could not load posts from localStorage", error);
-    }
+      setLoading(false);
+    }, (error) => {
+      console.error("Firebase read failed: " + error.message);
+      setLoading(false);
+    });
+
+    return () => unsubscribe();
   }, []);
 
   const form = useForm<{ content: string }>({
@@ -43,22 +57,20 @@ export default function CommunityPage() {
     defaultValues: { content: '' },
   });
 
-  const onSubmit = (data: { content: string }) => {
-    const newPost: CommunityPost = {
-      id: new Date().toISOString(),
-      author: currentUser.name,
-      avatarUrl: currentUser.avatarUrl,
-      timestamp: new Date().toISOString(),
-      content: data.content,
-    };
-    const updatedPosts = [newPost, ...posts];
-    setPosts(updatedPosts);
+  const onSubmit = async (data: { content: string }) => {
     try {
-        localStorage.setItem('community-posts', JSON.stringify(updatedPosts));
+      const newPostRef = push(ref(db, 'posts'));
+      const newPost: Omit<CommunityPost, 'id'> = {
+        author: currentUser.name,
+        avatarUrl: currentUser.avatarUrl,
+        timestamp: new Date().toISOString(),
+        content: data.content,
+      };
+      await set(newPostRef, newPost);
+      form.reset();
     } catch (error) {
-        console.error("Could not save posts to localStorage", error);
+        console.error("Could not save post to Firebase", error);
     }
-    form.reset();
   };
 
   return (
@@ -71,7 +83,11 @@ export default function CommunityPage() {
         <div className="lg:col-span-2">
           <ScrollArea className="h-[65vh] pr-4 -mr-4">
             <div className="space-y-6">
-              {posts.length > 0 ? (
+              {loading ? (
+                <div className="flex justify-center items-center h-full">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : posts.length > 0 ? (
                 posts.map((post) => (
                   <Card key={post.id} className="p-4 bg-card/80">
                     <div className="flex items-start space-x-4">
@@ -125,7 +141,7 @@ export default function CommunityPage() {
                     )}
                   />
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                    <Send className="mr-2 h-4 w-4" />
+                    {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                     Post to Community
                   </Button>
                 </form>
