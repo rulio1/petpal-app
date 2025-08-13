@@ -24,25 +24,34 @@ export default function SignupPage() {
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!name || !username || !email || !password) {
+      toast({
+        variant: "destructive",
+        title: "Campos obrigatórios",
+        description: "Por favor, preencha todos os campos.",
+      });
+      return;
+    }
     setIsLoading(true);
     try {
+      // 1. Create the user in Firebase Auth
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
-      // Update Firebase Auth profile
+      // 2. Update the user's display name in Firebase Auth
       await updateProfile(user, { displayName: name });
       
-      // Save user info to Realtime Database
+      // 3. Save the user's profile information to Realtime Database
       await set(ref(db, 'users/' + user.uid), {
+        uid: user.uid,
+        name: name,
         username: username,
         email: user.email,
-        name: name,
-        uid: user.uid,
       });
 
       toast({
-        title: "Conta Criada",
-        description: "Sua conta foi criada com sucesso.",
+        title: "Conta Criada!",
+        description: "Sua conta foi criada com sucesso. Bem-vindo!",
       });
       router.push('/dashboard');
     } catch (error: any) {
@@ -52,7 +61,12 @@ export default function SignupPage() {
         description = "Este e-mail já está em uso por outra conta.";
       } else if (error.code === 'auth/weak-password') {
         description = "A senha é muito fraca. Por favor, escolha uma senha mais forte.";
+      } else if (error.code === 'auth/network-request-failed') {
+        description = "Falha de rede. Verifique sua conexão com a internet.";
+      } else if (error.code === 'PERMISSION_DENIED') {
+        description = "Permissão negada para salvar dados. Verifique as regras de segurança do seu Realtime Database.";
       }
+      
       toast({
         variant: "destructive",
         title: "Falha no Cadastro",
