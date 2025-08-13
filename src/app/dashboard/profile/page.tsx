@@ -15,7 +15,7 @@ import { PawPrint, UserCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, onValue, get } from "firebase/database";
+import { ref, set, onValue, get, query, orderByChild, equalTo } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile } from '@/lib/types';
 
@@ -56,11 +56,16 @@ export default function ProfilePage() {
           const data = snapshot.val() as UserProfile;
           if (data) {
             setUserProfile(data);
-            form.setValue('name', data.name || currentUser.displayName || '');
-            form.setValue('username', data.username || '');
+            form.reset({
+              name: data.name || currentUser.displayName || '',
+              username: data.username || '',
+              email: currentUser.email || '',
+            });
             if(data.avatarUrl) {
               setImagePreview(data.avatarUrl);
             }
+          } else {
+             form.setValue('name', currentUser.displayName || '');
           }
         });
       }
@@ -79,14 +84,16 @@ export default function ProfilePage() {
     try {
       // Check if username is already taken by another user
       const usersRef = ref(db, 'users');
-      const snapshot = await get(usersRef);
+      const usernameQuery = query(usersRef, orderByChild('username'), equalTo(data.username));
+      const snapshot = await get(usernameQuery);
+      
       if (snapshot.exists()) {
         const usersData = snapshot.val();
-        const isUsernameTaken = Object.values(usersData).some((profile: any) => profile.username === data.username && profile.uid !== user.uid);
-        if (isUsernameTaken) {
-          form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
-          setIsSubmitting(false);
-          return;
+        const isTaken = Object.keys(usersData).some(key => key !== user.uid);
+        if (isTaken) {
+            form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
+            setIsSubmitting(false);
+            return;
         }
       }
       
@@ -132,18 +139,23 @@ export default function ProfilePage() {
   }
 
   const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value;
-    if (!value.startsWith('@')) {
-      form.setValue('username', '@' + value.replace(/@/g, ''));
-    } else {
-      form.setValue('username', value);
+    let value = e.target.value;
+    if (value && !value.startsWith('@')) {
+      value = '@' + value.replace(/@/g, '');
+    } else if (!value) {
+      value = '@'
     }
+    form.setValue('username', value, { shouldValidate: true });
   };
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setImagePreview(URL.createObjectURL(file));
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
     }
   }
 
@@ -173,7 +185,10 @@ export default function ProfilePage() {
                         accept="image/*" 
                         className="max-w-xs"
                         {...imageFieldRef}
-                        onChange={handleImageChange}
+                        onChange={(e) => {
+                           field.onChange(e.target.files);
+                           handleImageChange(e);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
