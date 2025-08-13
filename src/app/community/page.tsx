@@ -10,30 +10,42 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import type { CommunityPost } from '@/lib/types';
+import type { CommunityPost, UserProfile } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint } from 'lucide-react';
-import { db } from '@/lib/firebase';
+import { db, auth } from '@/lib/firebase';
 import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
+import { onAuthStateChanged, User } from 'firebase/auth';
 
 const postSchema = z.object({
   content: z.string().min(1, 'A publicação não pode estar vazia.').max(500, 'A publicação não pode exceder 500 caracteres.'),
 });
 
-// Mock user
-const currentUser = {
-  name: 'Você',
-  avatarUrl: 'https://placehold.co/40x40.png',
-};
-
 export default function CommunityPage() {
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
 
   useEffect(() => {
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
+      setUser(currentUser);
+       if (currentUser) {
+        const userRef = ref(db, 'users/' + currentUser.uid);
+        onValue(userRef, (snapshot) => {
+          const data = snapshot.val();
+          if (data) {
+            setUserProfile(data);
+          }
+        });
+      } else {
+        setUserProfile(null);
+      }
+    });
+
     const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
-    const unsubscribe = onValue(postsRef, (snapshot) => {
+    const unsubscribePosts = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
       if (data) {
         const postList: CommunityPost[] = Object.keys(data).map(key => ({
@@ -50,7 +62,10 @@ export default function CommunityPage() {
       setLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribePosts();
+    };
   }, []);
 
   const form = useForm<{ content: string }>({
@@ -59,11 +74,15 @@ export default function CommunityPage() {
   });
 
   const onSubmit = async (data: { content: string }) => {
+     if (!user || !userProfile) {
+      console.error("User not logged in or profile not loaded");
+      return;
+    }
     try {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
-        author: currentUser.name,
-        avatarUrl: currentUser.avatarUrl,
+        author: userProfile.name,
+        avatarUrl: userProfile.avatarUrl ?? '',
         timestamp: new Date().toISOString(),
         content: data.content,
       };

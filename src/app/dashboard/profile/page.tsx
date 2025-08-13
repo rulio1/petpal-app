@@ -82,24 +82,27 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      // Check if username is already taken by another user
       const usersRef = ref(db, 'users');
       const usernameQuery = query(usersRef, orderByChild('username'), equalTo(data.username));
       const snapshot = await get(usernameQuery);
       
       if (snapshot.exists()) {
-        const usersData = snapshot.val();
-        const existingUserId = Object.keys(usersData)[0];
-        if (existingUserId !== user.uid) {
-            form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
-            setIsSubmitting(false);
-            return;
+        let isTaken = false;
+        snapshot.forEach((childSnapshot) => {
+          if (childSnapshot.key !== user.uid) {
+            isTaken = true;
+          }
+        });
+
+        if (isTaken) {
+          form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
+          setIsSubmitting(false);
+          return;
         }
       }
       
-      let newAvatarUrl = userProfile?.avatarUrl;
+      let newAvatarUrl = userProfile?.avatarUrl ?? '';
 
-      // Handle image upload
       if (data.image && data.image[0]) {
         const imageFile = data.image[0];
         const imageStorageRef = storageRef(storage, `avatars/${user.uid}/${imageFile.name}`);
@@ -107,13 +110,11 @@ export default function ProfilePage() {
         newAvatarUrl = await getDownloadURL(uploadResult.ref);
       }
 
-      // Update Firebase Auth profile
       await updateProfile(user, { 
         displayName: data.name,
         photoURL: newAvatarUrl
       });
 
-      // Update Realtime Database
       await set(ref(db, `users/${user.uid}`), {
         uid: user.uid,
         name: data.name,
