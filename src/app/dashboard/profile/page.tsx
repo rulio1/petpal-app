@@ -49,8 +49,8 @@ export default function ProfilePage() {
       if (currentUser && !initialLoadDone.current) {
         form.setValue('email', currentUser.email || '');
         const userRef = ref(db, `users/${currentUser.uid}`);
-        onValue(userRef, (snapshot) => {
-          if (snapshot.exists() && !initialLoadDone.current) {
+        get(userRef).then((snapshot) => {
+          if (snapshot.exists()) {
             const data = snapshot.val() as UserProfile;
             form.reset({
               name: data.name || currentUser.displayName || '',
@@ -60,12 +60,11 @@ export default function ProfilePage() {
             if (data.avatarUrl) {
               setImagePreview(data.avatarUrl);
             }
-            initialLoadDone.current = true;
-          } else if (!snapshot.exists()) {
+          } else {
              form.setValue('name', currentUser.displayName || '');
-             initialLoadDone.current = true;
           }
-        }, { onlyOnce: true });
+          initialLoadDone.current = true;
+        });
       }
     });
     return () => unsubscribe();
@@ -83,7 +82,7 @@ export default function ProfilePage() {
       const snapshot = await get(userRef);
       const currentUserProfile = snapshot.val() as UserProfile;
 
-      let newAvatarUrl = currentUserProfile?.avatarUrl ?? '';
+      let newAvatarUrl = currentUserProfile?.avatarUrl ?? user.photoURL ?? '';
 
       if (data.image && data.image[0]) {
         const imageFile = data.image[0];

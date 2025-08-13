@@ -15,7 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, get } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 const postSchema = z.object({
