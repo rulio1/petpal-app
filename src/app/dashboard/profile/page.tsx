@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -13,7 +13,7 @@ import { PawPrint, UserCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, onValue } from "firebase/database";
+import { ref, set, onValue, get } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile } from '@/lib/types';
 
@@ -29,9 +29,9 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 export default function ProfilePage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const initialLoadDone = useRef(false);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -39,33 +39,33 @@ export default function ProfilePage() {
       name: '',
       username: '',
       email: '',
+      image: null,
     },
   });
-
-  const imageFieldRef = form.register("image");
 
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) {
+      if (currentUser && !initialLoadDone.current) {
         form.setValue('email', currentUser.email || '');
         const userRef = ref(db, `users/${currentUser.uid}`);
         onValue(userRef, (snapshot) => {
-          const data = snapshot.val() as UserProfile;
-          if (data) {
-            setUserProfile(data);
+          if (snapshot.exists() && !initialLoadDone.current) {
+            const data = snapshot.val() as UserProfile;
             form.reset({
               name: data.name || currentUser.displayName || '',
               username: data.username || '',
               email: currentUser.email || '',
             });
-            if(data.avatarUrl) {
+            if (data.avatarUrl) {
               setImagePreview(data.avatarUrl);
             }
-          } else {
+            initialLoadDone.current = true;
+          } else if (!snapshot.exists()) {
              form.setValue('name', currentUser.displayName || '');
+             initialLoadDone.current = true;
           }
-        });
+        }, { onlyOnce: true });
       }
     });
     return () => unsubscribe();
@@ -76,11 +76,14 @@ export default function ProfilePage() {
         toast({ variant: "destructive", title: "Erro", description: "Nenhum usuário autenticado."});
         return;
     }
-
     setIsSubmitting(true);
     
     try {
-      let newAvatarUrl = userProfile?.avatarUrl ?? '';
+      const userRef = ref(db, `users/${user.uid}`);
+      const snapshot = await get(userRef);
+      const currentUserProfile = snapshot.val() as UserProfile;
+
+      let newAvatarUrl = currentUserProfile?.avatarUrl ?? '';
 
       if (data.image && data.image[0]) {
         const imageFile = data.image[0];
@@ -94,7 +97,7 @@ export default function ProfilePage() {
         photoURL: newAvatarUrl
       });
 
-      const updatedProfile: UserProfile = {
+      const updatedProfileData: UserProfile = {
         uid: user.uid,
         name: data.name,
         username: data.username,
@@ -102,10 +105,10 @@ export default function ProfilePage() {
         avatarUrl: newAvatarUrl,
       };
 
-      await set(ref(db, `users/${user.uid}`), updatedProfile);
+      await set(ref(db, `users/${user.uid}`), updatedProfileData);
       
-      setUserProfile(updatedProfile);
-
+      setImagePreview(newAvatarUrl);
+      
       toast({
         title: 'Perfil Atualizado!',
         description: 'Suas informações foram salvas com sucesso.',
@@ -140,6 +143,7 @@ export default function ProfilePage() {
         setImagePreview(reader.result as string);
       };
       reader.readAsDataURL(file);
+      form.setValue('image', e.target.files);
     }
   }
 
@@ -168,11 +172,7 @@ export default function ProfilePage() {
                         type="file" 
                         accept="image/*" 
                         className="max-w-xs"
-                        {...imageFieldRef}
-                        onChange={(e) => {
-                           field.onChange(e.target.files);
-                           handleImageChange(e);
-                        }}
+                        onChange={handleImageChange}
                       />
                     </FormControl>
                     <FormMessage />
