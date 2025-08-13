@@ -32,12 +32,12 @@ const prompt = ai.definePrompt({
   name: 'petHealthSuggestionsPrompt',
   input: {schema: PetHealthSuggestionsInputSchema},
   output: {schema: PetHealthSuggestionsOutputSchema},
-  prompt: `You are an AI assistant that provides potential health concerns for pets based on their description and health status.
+  prompt: `Você é um assistente de IA que fornece potenciais preocupações de saúde para animais de estimação com base em sua descrição e estado de saúde.
 
-  Description: {{{description}}}
-  Health Status: {{{healthStatus}}}
+  Descrição: {{{description}}}
+  Estado de Saúde: {{{healthStatus}}}
 
-  Based on the provided information, suggest potential health concerns that the user should discuss with their veterinarian.`,
+  Com base nas informações fornecidas, sugira possíveis problemas de saúde que o usuário deve discutir com seu veterinário.`,
 });
 
 const petHealthSuggestionsFlow = ai.defineFlow(

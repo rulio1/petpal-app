@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 
 const navLinks = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { href: '/community', label: 'Community', icon: Users },
+  { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
+  { href: '/community', label: 'Comunidade', icon: Users },
 ];
 
 export function AppHeader() {
@@ -38,7 +38,7 @@ export function AppHeader() {
         </nav>
         <div className="ml-auto flex items-center space-x-4">
           <Button variant="outline" asChild>
-            <Link href="/">Logout</Link>
+            <Link href="/">Sair</Link>
           </Button>
         </div>
       </div>

@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wand2, Upload } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getPetHealthSuggestions } from '@/ai/flows/pet-health-suggestions';
 import { db, storage } from '@/lib/firebase';
@@ -20,16 +20,16 @@ import { ref as dbRef, push, set } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 
 const petFormSchema = z.object({
-  name: z.string().min(2, 'Name must be at least 2 characters.'),
+  name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   species: z.enum(['Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Turtle', 'Other']),
-  age: z.coerce.number().min(0, 'Age must be a positive number.'),
-  lastFed: z.string().min(1, 'Last feeding time is required.'),
-  height: z.coerce.number().min(0, 'Height must be a positive number.'),
-  weight: z.coerce.number().min(0, 'Weight must be a positive number.'),
-  length: z.coerce.number().min(0, 'Length must be a positive number.'),
-  description: z.string().min(10, 'Description must be at least 10 characters.'),
-  healthStatus: z.string().min(1, 'Health status is required.'),
-  image: z.any().refine((files) => files?.length == 1, "Image is required."),
+  age: z.coerce.number().min(0, 'A idade deve ser um número positivo.'),
+  lastFed: z.string().min(1, 'A última alimentação é obrigatória.'),
+  height: z.coerce.number().min(0, 'A altura deve ser um número positivo.'),
+  weight: z.coerce.number().min(0, 'O peso deve ser um número positivo.'),
+  length: z.coerce.number().min(0, 'O comprimento deve ser um número positivo.'),
+  description: z.string().min(10, 'A descrição deve ter pelo menos 10 caracteres.'),
+  healthStatus: z.string().min(1, 'O estado de saúde é obrigatório.'),
+  image: z.any().refine((files) => files?.length == 1, "A imagem é obrigatória."),
 });
 
 type PetFormValues = z.infer<typeof petFormSchema>;
@@ -64,8 +64,8 @@ export function AddPetForm() {
     if (!description || !healthStatus) {
       toast({
         variant: "destructive",
-        title: "Missing Information",
-        description: "Please fill out the description and health status to get AI suggestions.",
+        title: "Informação Faltando",
+        description: "Por favor, preencha a descrição e o estado de saúde para obter sugestões da IA.",
       });
       return;
     }
@@ -80,8 +80,8 @@ export function AddPetForm() {
       console.error(error);
       toast({
         variant: "destructive",
-        title: "AI Suggestion Failed",
-        description: "Could not get health suggestions at this time. Please try again later.",
+        title: "Falha na Sugestão da IA",
+        description: "Não foi possível obter sugestões de saúde no momento. Por favor, tente novamente mais tarde.",
       });
     } finally {
       setIsAiLoading(false);
@@ -111,16 +111,16 @@ export function AddPetForm() {
       });
 
       toast({
-        title: 'Pet Added!',
-        description: `${data.name} has been successfully added to your dashboard.`,
+        title: 'Pet Adicionado!',
+        description: `${data.name} foi adicionado com sucesso ao seu painel.`,
       });
       router.push('/dashboard');
     } catch (error) {
-        console.error("Error adding pet:", error);
+        console.error("Erro ao adicionar pet:", error);
         toast({
             variant: "destructive",
-            title: "Failed to add pet",
-            description: "An error occurred while adding the pet. Please try again.",
+            title: "Falha ao adicionar pet",
+            description: "Ocorreu um erro ao adicionar o pet. Por favor, tente novamente.",
         });
     } finally {
         setIsSubmitting(false);
@@ -130,8 +130,8 @@ export function AddPetForm() {
   return (
     <Card className="w-full">
       <CardHeader>
-        <CardTitle>Add a New Pet</CardTitle>
-        <CardDescription>Fill in the details for your new companion.</CardDescription>
+        <CardTitle>Adicionar um Novo Pet</CardTitle>
+        <CardDescription>Preencha os detalhes do seu novo companheiro.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -141,7 +141,7 @@ export function AddPetForm() {
               name="image"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Pet Photo</FormLabel>
+                  <FormLabel>Foto do Pet</FormLabel>
                   <FormControl>
                     <div className="flex items-center gap-4">
                       <Input id="image" type="file" accept="image/*" {...imageRef} />
@@ -157,7 +157,7 @@ export function AddPetForm() {
                 name="name"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Name</FormLabel>
+                    <FormLabel>Nome</FormLabel>
                     <FormControl>
                       <Input placeholder="Buddy" {...field} />
                     </FormControl>
@@ -170,17 +170,21 @@ export function AddPetForm() {
                 name="species"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Species</FormLabel>
+                    <FormLabel>Espécie</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder="Select a species" />
+                          <SelectValue placeholder="Selecione uma espécie" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {['Dog', 'Cat', 'Bird', 'Fish', 'Rabbit', 'Turtle', 'Other'].map(s => (
-                          <SelectItem key={s} value={s}>{s}</SelectItem>
-                        ))}
+                        <SelectItem value="Dog">Cachorro</SelectItem>
+                        <SelectItem value="Cat">Gato</SelectItem>
+                        <SelectItem value="Bird">Pássaro</SelectItem>
+                        <SelectItem value="Fish">Peixe</SelectItem>
+                        <SelectItem value="Rabbit">Coelho</SelectItem>
+                        <SelectItem value="Turtle">Tartaruga</SelectItem>
+                        <SelectItem value="Other">Outro</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -192,7 +196,7 @@ export function AddPetForm() {
                 name="age"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Age (years)</FormLabel>
+                    <FormLabel>Idade (anos)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="5" {...field} />
                     </FormControl>
@@ -205,9 +209,9 @@ export function AddPetForm() {
                 name="lastFed"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Last Feeding</FormLabel>
+                    <FormLabel>Última Alimentação</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g., 8:00 AM" {...field} />
+                      <Input placeholder="ex: 08:00" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -218,7 +222,7 @@ export function AddPetForm() {
                 name="height"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Height (cm)</FormLabel>
+                    <FormLabel>Altura (cm)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="55" {...field} />
                     </FormControl>
@@ -231,7 +235,7 @@ export function AddPetForm() {
                 name="weight"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Weight (kg)</FormLabel>
+                    <FormLabel>Peso (kg)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="25" {...field} />
                     </FormControl>
@@ -244,7 +248,7 @@ export function AddPetForm() {
                 name="length"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Length (cm)</FormLabel>
+                    <FormLabel>Comprimento (cm)</FormLabel>
                     <FormControl>
                       <Input type="number" placeholder="90" {...field} />
                     </FormControl>
@@ -257,9 +261,9 @@ export function AddPetForm() {
                 name="healthStatus"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Health Status</FormLabel>
+                    <FormLabel>Estado de Saúde</FormLabel>
                     <FormControl>
-                      <Input placeholder="Healthy, playful, etc." {...field} />
+                      <Input placeholder="Saudável, brincalhão, etc." {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -272,10 +276,10 @@ export function AddPetForm() {
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Descrição</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Describe your pet's behavior, diet, and environment..."
+                      placeholder="Descreva o comportamento, dieta e ambiente do seu pet..."
                       className="resize-none"
                       {...field}
                     />
@@ -288,29 +292,29 @@ export function AddPetForm() {
             <div className="space-y-4 pt-4">
               <Button type="button" variant="outline" onClick={handleGetHealthSuggestion} disabled={isAiLoading} className="w-full md:w-auto">
                 {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                Get AI Health Suggestions
+                Obter Sugestões de Saúde com IA
               </Button>
 
-              {isAiLoading && <p className="text-sm text-muted-foreground text-center">AI is thinking...</p>}
+              {isAiLoading && <p className="text-sm text-muted-foreground text-center">A IA está pensando...</p>}
 
               {aiSuggestion && (
                 <Alert className="bg-secondary">
                   <Wand2 className="h-4 w-4" />
-                  <AlertTitle>AI Health Suggestions</AlertTitle>
+                  <AlertTitle>Sugestões de Saúde da IA</AlertTitle>
                   <AlertDescription>
                     {aiSuggestion}
                     <br/><br/>
-                    <em className="text-xs text-muted-foreground">Disclaimer: This is an AI suggestion. Always consult a professional veterinarian for medical advice.</em>
+                    <em className="text-xs text-muted-foreground">Aviso: Esta é uma sugestão da IA. Sempre consulte um veterinário profissional para aconselhamento médico.</em>
                   </AlertDescription>
                 </Alert>
               )}
             </div>
 
             <div className="flex justify-end space-x-2 pt-6">
-              <Button type="button" variant="ghost" onClick={() => router.back()}>Cancel</Button>
+              <Button type="button" variant="ghost" onClick={() => router.back()}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Add Pet
+                Adicionar Pet
               </Button>
             </div>
           </form>

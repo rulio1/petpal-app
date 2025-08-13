@@ -25,16 +25,16 @@ export default function LoginPage() {
     try {
       await signInWithEmailAndPassword(auth, email, password);
       toast({
-        title: "Login Successful",
-        description: "Welcome back!",
+        title: "Login bem-sucedido",
+        description: "Bem-vindo de volta!",
       });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Login failed:", error);
+      console.error("Falha no login:", error);
       toast({
         variant: "destructive",
-        title: "Login Failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        title: "Falha no Login",
+        description: "Ocorreu um erro. Verifique seu e-mail e senha e tente novamente.",
       });
     } finally {
       setIsLoading(false);
@@ -49,28 +49,28 @@ export default function LoginPage() {
             <div className="flex justify-center items-center mb-4">
               <PawPrint className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-headline">Welcome to PetPal</CardTitle>
-            <CardDescription>Sign in to manage your furry friends.</CardDescription>
+            <CardTitle className="text-3xl font-headline">Bem-vindo ao PetPal</CardTitle>
+            <CardDescription>Faça login para gerenciar seus amigos peludos.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="voce@exemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Login
+                Entrar
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
-              Don't have an account?{' '}
+              Não tem uma conta?{' '}
               <Link href="/signup" className="underline text-primary">
-                Sign up
+                Cadastre-se
               </Link>
             </div>
           </CardContent>

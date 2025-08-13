@@ -12,17 +12,18 @@ import { Form, FormControl, FormField, FormItem, FormMessage } from '@/component
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
+import { ptBR } from 'date-fns/locale';
 import { Send, Loader2 } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
 
 const postSchema = z.object({
-  content: z.string().min(1, 'Post cannot be empty.').max(500, 'Post cannot exceed 500 characters.'),
+  content: z.string().min(1, 'A publicação não pode estar vazia.').max(500, 'A publicação não pode exceder 500 caracteres.'),
 });
 
 // Mock user
 const currentUser = {
-  name: 'You',
+  name: 'Você',
   avatarUrl: 'https://placehold.co/40x40.png',
 };
 
@@ -76,7 +77,7 @@ export default function CommunityPage() {
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-headline">Community Forum</h1>
+        <h1 className="text-3xl font-bold font-headline">Fórum da Comunidade</h1>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -99,7 +100,7 @@ export default function CommunityPage() {
                         <div className="flex items-center justify-between">
                           <p className="font-semibold text-primary">{post.author}</p>
                           <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true })}
+                            {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
                           </p>
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
@@ -109,8 +110,8 @@ export default function CommunityPage() {
                 ))
               ) : (
                 <div className="text-center py-16 border-2 border-dashed rounded-lg h-full flex flex-col justify-center items-center">
-                  <h2 className="text-xl font-semibold">The forum is quiet...</h2>
-                  <p className="text-muted-foreground mt-2">Be the first to share something!</p>
+                  <h2 className="text-xl font-semibold">O fórum está silencioso...</h2>
+                  <p className="text-muted-foreground mt-2">Seja o primeiro a compartilhar algo!</p>
                 </div>
               )}
             </div>
@@ -120,7 +121,7 @@ export default function CommunityPage() {
         <div className="lg:col-span-1">
           <Card className="sticky top-24">
             <CardContent className="p-6">
-              <h3 className="text-lg font-semibold mb-4">Share your thoughts</h3>
+              <h3 className="text-lg font-semibold mb-4">Compartilhe suas ideias</h3>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                   <FormField
@@ -130,7 +131,7 @@ export default function CommunityPage() {
                       <FormItem>
                         <FormControl>
                           <Textarea
-                            placeholder="What's on your mind? Share tips, stories, or ask questions..."
+                            placeholder="O que você está pensando? Compartilhe dicas, histórias ou faça perguntas..."
                             className="resize-none"
                             rows={5}
                             {...field}
@@ -142,7 +143,7 @@ export default function CommunityPage() {
                   />
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
                     {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    Post to Community
+                    Publicar na Comunidade
                   </Button>
                 </form>
               </Form>

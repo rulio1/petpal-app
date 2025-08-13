@@ -1,7 +1,9 @@
+export type Species = 'Dog' | 'Cat' | 'Bird' | 'Fish' | 'Rabbit' | 'Turtle' | 'Other';
+
 export interface Pet {
   id: string;
   name: string;
-  species: 'Dog' | 'Cat' | 'Bird' | 'Fish' | 'Rabbit' | 'Turtle' | 'Other';
+  species: Species;
   age: number;
   lastFed: string;
   imageUrl: string;

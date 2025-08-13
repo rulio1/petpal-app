@@ -15,8 +15,20 @@ const speciesIcons: { [key: string]: React.ComponentType<LucideProps> } = {
   Other: PawPrint,
 };
 
+const speciesLabels: { [key: string]: string } = {
+  Dog: 'Cachorro',
+  Cat: 'Gato',
+  Bird: 'Pássaro',
+  Fish: 'Peixe',
+  Rabbit: 'Coelho',
+  Turtle: 'Tartaruga',
+  Other: 'Outro',
+};
+
 export function PetCard({ pet }: { pet: Pet }) {
   const Icon = speciesIcons[pet.species] || PawPrint;
+  const speciesLabel = speciesLabels[pet.species] || 'Pet';
+  
   return (
     <Card className="hover:shadow-lg transition-shadow duration-300">
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -27,16 +39,16 @@ export function PetCard({ pet }: { pet: Pet }) {
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-md mb-4">
           <Image
             src={pet.imageUrl}
-            alt={`Photo of ${pet.name}`}
+            alt={`Foto de ${pet.name}`}
             fill
             className="object-cover"
-            data-ai-hint={`${pet.species.toLowerCase()}`}
+            data-ai-hint={`${speciesLabel.toLowerCase()}`}
           />
         </div>
-        <CardDescription>{pet.age} years old</CardDescription>
+        <CardDescription>{pet.age} anos de idade</CardDescription>
         <div className="flex items-center justify-between mt-2 text-sm text-muted-foreground">
-          <span>Last fed: {pet.lastFed}</span>
-          <Badge variant={pet.healthStatus.toLowerCase() === 'healthy' ? 'secondary' : 'destructive'}>{pet.healthStatus}</Badge>
+          <span>Última vez alimentado: {pet.lastFed}</span>
+          <Badge variant={pet.healthStatus.toLowerCase() === 'healthy' || pet.healthStatus.toLowerCase() === 'saudável' ? 'secondary' : 'destructive'}>{pet.healthStatus}</Badge>
         </div>
       </CardContent>
     </Card>

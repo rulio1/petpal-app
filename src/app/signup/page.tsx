@@ -25,18 +25,18 @@ export default function SignupPage() {
     setIsLoading(true);
     try {
       await createUserWithEmailAndPassword(auth, email, password);
-      // You can also use the 'name' state to update the user's profile
+      // Você também pode usar o estado 'name' para atualizar o perfil do usuário
       toast({
-        title: "Account Created",
-        description: "Your account has been successfully created.",
+        title: "Conta Criada",
+        description: "Sua conta foi criada com sucesso.",
       });
       router.push('/dashboard');
     } catch (error: any) {
-      console.error("Signup failed:", error);
+      console.error("Falha no cadastro:", error);
       toast({
         variant: "destructive",
-        title: "Signup Failed",
-        description: error.message || "An unexpected error occurred. Please try again.",
+        title: "Falha no Cadastro",
+        description: error.message || "Ocorreu um erro inesperado. Por favor, tente novamente.",
       });
     } finally {
       setIsLoading(false);
@@ -51,32 +51,32 @@ export default function SignupPage() {
             <div className="flex justify-center items-center mb-4">
               <PawPrint className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-headline">Create your PetPal Account</CardTitle>
-            <CardDescription>Join our community of pet lovers.</CardDescription>
+            <CardTitle className="text-3xl font-headline">Crie sua Conta PetPal</CardTitle>
+            <CardDescription>Junte-se à nossa comunidade de amantes de pets.</CardDescription>
           </CardHeader>
           <CardContent>
             <form onSubmit={handleSignup} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name">Name</Label>
-                <Input id="name" type="text" placeholder="Your Name" required value={name} onChange={(e) => setName(e.target.value)} />
+                <Label htmlFor="name">Nome</Label>
+                <Input id="name" type="text" placeholder="Seu Nome" required value={name} onChange={(e) => setName(e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
-                <Input id="email" type="email" placeholder="you@example.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
+                <Input id="email" type="email" placeholder="voce@exemplo.com" required value={email} onChange={(e) => setEmail(e.target.value)} />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="password">Password</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Create Account
+                Criar Conta
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
-              Already have an account?{' '}
+              Já tem uma conta?{' '}
               <Link href="/" className="underline text-primary">
-                Login
+                Entrar
               </Link>
             </div>
           </CardContent>

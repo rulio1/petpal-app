@@ -38,11 +38,11 @@ export default function DashboardPage() {
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
-        <h1 className="text-3xl font-bold font-headline">Your Pets</h1>
+        <h1 className="text-3xl font-bold font-headline">Seus Pets</h1>
         <Button asChild>
           <Link href="/dashboard/add-pet">
             <PlusCircle className="mr-2 h-4 w-4" />
-            Add New Pet
+            Adicionar Novo Pet
           </Link>
         </Button>
       </div>
@@ -59,12 +59,12 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
-          <h2 className="text-xl font-semibold">No pets yet!</h2>
-          <p className="text-muted-foreground mt-2">Get started by adding your first pet.</p>
+          <h2 className="text-xl font-semibold">Nenhum pet ainda!</h2>
+          <p className="text-muted-foreground mt-2">Comece adicionando seu primeiro pet.</p>
           <Button asChild className="mt-4">
             <Link href="/dashboard/add-pet">
               <PlusCircle className="mr-2 h-4 w-4" />
-              Add Pet
+              Adicionar Pet
             </Link>
           </Button>
         </div>
