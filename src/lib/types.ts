@@ -20,6 +20,7 @@ export interface CommunityPost {
   avatarUrl: string;
   timestamp: string;
   content: string;
+  userId: string;
 }
 
 export interface UserProfile {

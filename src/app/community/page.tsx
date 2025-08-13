@@ -83,6 +83,7 @@ export default function CommunityPage() {
         avatarUrl: userProfile.avatarUrl ?? '',
         timestamp: new Date().toISOString(),
         content: data.content,
+        userId: user.uid,
       };
       await set(newPostRef, newPost);
       form.reset();

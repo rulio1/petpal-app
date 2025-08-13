@@ -14,7 +14,7 @@ import { PawPrint, UserCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, onValue, get, query, orderByChild, equalTo } from "firebase/database";
+import { ref, set, onValue } from "firebase/database";
 import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile } from '@/lib/types';
 
@@ -81,27 +81,6 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      // Check if username is taken by another user
-      const usersRef = ref(db, 'users');
-      const usernameQuery = query(usersRef, orderByChild('username'), equalTo(data.username));
-      const snapshot = await get(usernameQuery);
-      
-      if (snapshot.exists()) {
-        let isTaken = false;
-        snapshot.forEach((childSnapshot) => {
-          // If a user with this username exists and it's not the current user
-          if (childSnapshot.key !== user.uid) {
-            isTaken = true;
-          }
-        });
-
-        if (isTaken) {
-          form.setError('username', { type: 'manual', message: 'Este nome de usuário já está em uso.' });
-          setIsSubmitting(false);
-          return;
-        }
-      }
-      
       let newAvatarUrl = userProfile?.avatarUrl ?? '';
 
       if (data.image && data.image[0]) {
