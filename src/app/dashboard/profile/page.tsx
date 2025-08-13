@@ -5,21 +5,25 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { PawPrint } from 'lucide-react';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { PawPrint, UserCircle } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { auth, db } from '@/lib/firebase';
+import { auth, db, storage } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
 import { ref, set, onValue, get } from "firebase/database";
+import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
 import type { UserProfile } from '@/lib/types';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   username: z.string().min(3, 'O nome de usuário deve ter pelo menos 3 caracteres.').refine(val => val.startsWith('@'), { message: 'O nome de usuário deve começar com @.'}),
   email: z.string().email('Por favor, insira um email válido.'),
+  image: z.any().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -27,7 +31,9 @@ type ProfileFormValues = z.infer<typeof profileFormSchema>;
 export default function ProfilePage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
   
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
@@ -38,6 +44,8 @@ export default function ProfilePage() {
     },
   });
 
+  const imageFieldRef = form.register("image");
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
@@ -47,8 +55,12 @@ export default function ProfilePage() {
         onValue(userRef, (snapshot) => {
           const data = snapshot.val() as UserProfile;
           if (data) {
+            setUserProfile(data);
             form.setValue('name', data.name || currentUser.displayName || '');
             form.setValue('username', data.username || '');
+            if(data.avatarUrl) {
+              setImagePreview(data.avatarUrl);
+            }
           }
         });
       }
@@ -77,9 +89,22 @@ export default function ProfilePage() {
           return;
         }
       }
+      
+      let newAvatarUrl = userProfile?.avatarUrl;
+
+      // Handle image upload
+      if (data.image && data.image[0]) {
+        const imageFile = data.image[0];
+        const imageStorageRef = storageRef(storage, `avatars/${user.uid}/${imageFile.name}`);
+        const uploadResult = await uploadBytes(imageStorageRef, imageFile);
+        newAvatarUrl = await getDownloadURL(uploadResult.ref);
+      }
 
       // Update Firebase Auth profile
-      await updateProfile(user, { displayName: data.name });
+      await updateProfile(user, { 
+        displayName: data.name,
+        photoURL: newAvatarUrl
+      });
 
       // Update Realtime Database
       await set(ref(db, `users/${user.uid}`), {
@@ -87,6 +112,7 @@ export default function ProfilePage() {
         name: data.name,
         username: data.username,
         email: user.email,
+        avatarUrl: newAvatarUrl,
       });
 
       toast({
@@ -105,6 +131,22 @@ export default function ProfilePage() {
     }
   }
 
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!value.startsWith('@')) {
+      form.setValue('username', '@' + value.replace(/@/g, ''));
+    } else {
+      form.setValue('username', value);
+    }
+  };
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImagePreview(URL.createObjectURL(file));
+    }
+  }
+
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 lg:px-8">
       <Card>
@@ -115,6 +157,29 @@ export default function ProfilePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <FormField
+                control={form.control}
+                name="image"
+                render={({ field }) => (
+                  <FormItem className="flex flex-col items-center gap-4 text-center">
+                     <FormLabel>Foto de Perfil</FormLabel>
+                    <Avatar className="h-24 w-24">
+                       <AvatarImage src={imagePreview ?? undefined} alt="Foto de perfil do usuário" />
+                       <AvatarFallback><UserCircle className="h-full w-full text-muted-foreground"/></AvatarFallback>
+                    </Avatar>
+                    <FormControl>
+                      <Input 
+                        type="file" 
+                        accept="image/*" 
+                        className="max-w-xs"
+                        {...imageFieldRef}
+                        onChange={handleImageChange}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
                <FormField
                 control={form.control}
                 name="name"
@@ -135,7 +200,7 @@ export default function ProfilePage() {
                   <FormItem>
                     <FormLabel>Nome de Usuário</FormLabel>
                     <FormControl>
-                      <Input placeholder="@seunome" {...field} />
+                      <Input placeholder="@seunome" {...field} onChange={handleUsernameChange}/>
                     </FormControl>
                     <FormMessage />
                   </FormItem>

@@ -19,7 +19,7 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
-  const [username, setUsername] = useState('');
+  const [username, setUsername] = useState('@');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
@@ -37,7 +37,8 @@ export default function SignupPage() {
         username: username,
         email: user.email,
         name: name,
-        uid: user.uid
+        uid: user.uid,
+        avatarUrl: '',
       });
 
       toast({
@@ -63,6 +64,15 @@ export default function SignupPage() {
     }
   };
 
+  const handleUsernameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    if (!value.startsWith('@')) {
+      setUsername('@' + value.replace(/@/g, ''));
+    } else {
+      setUsername(value);
+    }
+  };
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <main className="w-full max-w-md mx-auto">
@@ -82,7 +92,7 @@ export default function SignupPage() {
               </div>
                <div className="space-y-2">
                 <Label htmlFor="username">Nome de Usuário</Label>
-                <Input id="username" type="text" placeholder="@seunome" required value={username} onChange={(e) => setUsername(e.target.value.startsWith('@') ? e.target.value : '@' + e.target.value)} />
+                <Input id="username" type="text" placeholder="@seunome" required value={username} onChange={handleUsernameChange} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

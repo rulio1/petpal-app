@@ -89,7 +89,7 @@ export function AppHeader() {
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarImage src="/placeholder-user.jpg" alt={userProfile?.username ?? ''} data-ai-hint="person avatar"/>
+                    <AvatarImage src={userProfile?.avatarUrl ?? undefined} alt={userProfile?.username ?? ''} data-ai-hint="person avatar"/>
                     <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
                   </Avatar>
                 </Button>
