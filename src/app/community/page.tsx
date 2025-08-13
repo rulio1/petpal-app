@@ -34,9 +34,8 @@ export default function CommunityPage() {
        if (currentUser) {
         const userRef = ref(db, 'users/' + currentUser.uid);
         onValue(userRef, (snapshot) => {
-          const data = snapshot.val();
-          if (data) {
-            setUserProfile(data);
+          if (snapshot.exists()) {
+            setUserProfile(snapshot.val());
           }
         });
       } else {
@@ -47,15 +46,14 @@ export default function CommunityPage() {
     const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
     const unsubscribePosts = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
+      const postList: CommunityPost[] = [];
       if (data) {
-        const postList: CommunityPost[] = Object.keys(data).map(key => ({
-          id: key,
-          ...data[key]
-        })).sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setPosts(postList);
-      } else {
-        setPosts([]);
+        for (const key in data) {
+          postList.push({ id: key, ...data[key] });
+        }
+        postList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       }
+      setPosts(postList);
       setLoading(false);
     }, (error) => {
       console.error("Firebase read failed: " + error.message);
