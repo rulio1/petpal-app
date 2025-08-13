@@ -8,8 +8,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PawPrint } from 'lucide-react';
-import { auth } from '@/lib/firebase';
-import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { auth, db } from '@/lib/firebase';
+import { createUserWithEmailAndPassword, updateProfile } from 'firebase/auth';
+import { ref, set } from "firebase/database";
 import { useToast } from "@/hooks/use-toast";
 
 export default function SignupPage() {
@@ -18,14 +19,27 @@ export default function SignupPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
   const [isLoading, setIsLoading] = useState(false);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
     try {
-      await createUserWithEmailAndPassword(auth, email, password);
-      // Você também pode usar o estado 'name' para atualizar o perfil do usuário
+      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      // Update Firebase Auth profile
+      await updateProfile(user, { displayName: name });
+      
+      // Save user info to Realtime Database
+      await set(ref(db, 'users/' + user.uid), {
+        username: username,
+        email: user.email,
+        name: name,
+        uid: user.uid
+      });
+
       toast({
         title: "Conta Criada",
         description: "Sua conta foi criada com sucesso.",
@@ -33,10 +47,16 @@ export default function SignupPage() {
       router.push('/dashboard');
     } catch (error: any) {
       console.error("Falha no cadastro:", error);
+      let description = "Ocorreu um erro inesperado. Por favor, tente novamente.";
+      if (error.code === 'auth/email-already-in-use') {
+        description = "Este e-mail já está em uso por outra conta.";
+      } else if (error.code === 'auth/weak-password') {
+        description = "A senha é muito fraca. Por favor, escolha uma senha mais forte.";
+      }
       toast({
         variant: "destructive",
         title: "Falha no Cadastro",
-        description: error.message || "Ocorreu um erro inesperado. Por favor, tente novamente.",
+        description: description,
       });
     } finally {
       setIsLoading(false);
@@ -59,6 +79,10 @@ export default function SignupPage() {
               <div className="space-y-2">
                 <Label htmlFor="name">Nome</Label>
                 <Input id="name" type="text" placeholder="Seu Nome" required value={name} onChange={(e) => setName(e.target.value)} />
+              </div>
+               <div className="space-y-2">
+                <Label htmlFor="username">Nome de Usuário</Label>
+                <Input id="username" type="text" placeholder="@seunome" required value={username} onChange={(e) => setUsername(e.target.value.startsWith('@') ? e.target.value : '@' + e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>

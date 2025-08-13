@@ -21,3 +21,10 @@ export interface CommunityPost {
   timestamp: string;
   content: string;
 }
+
+export interface UserProfile {
+  uid: string;
+  name: string;
+  username: string;
+  email: string;
+}
