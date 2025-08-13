@@ -15,7 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild, get } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 
 const postSchema = z.object({
@@ -80,7 +80,7 @@ export default function CommunityPage() {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
         author: userProfile.name,
-        avatarUrl: userProfile.avatarUrl ?? '',
+        avatarUrl: '', // Removed avatarUrl functionality
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,

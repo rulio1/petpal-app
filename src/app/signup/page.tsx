@@ -38,7 +38,6 @@ export default function SignupPage() {
         email: user.email,
         name: name,
         uid: user.uid,
-        avatarUrl: '',
       });
 
       toast({

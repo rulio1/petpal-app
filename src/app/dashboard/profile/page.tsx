@@ -8,20 +8,17 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { PawPrint, UserCircle } from 'lucide-react';
+import { PawPrint } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { auth, db, storage } from '@/lib/firebase';
+import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, onValue, get } from "firebase/database";
-import { ref as storageRef, uploadBytes, getDownloadURL } from "firebase/storage";
+import { ref, set, get } from "firebase/database";
 import type { UserProfile } from '@/lib/types';
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   username: z.string().min(3, 'O nome de usuário deve ter pelo menos 3 caracteres.').refine(val => val.startsWith('@'), { message: 'O nome de usuário deve começar com @.'}),
   email: z.string().email('Por favor, insira um email válido.'),
-  image: z.any().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -30,7 +27,6 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
   const initialLoadDone = useRef(false);
   
   const form = useForm<ProfileFormValues>({
@@ -39,7 +35,6 @@ export default function ProfilePage() {
       name: '',
       username: '',
       email: '',
-      image: null,
     },
   });
 
@@ -57,9 +52,6 @@ export default function ProfilePage() {
               username: data.username || '',
               email: currentUser.email || '',
             });
-            if (data.avatarUrl) {
-              setImagePreview(data.avatarUrl);
-            }
           } else {
              form.setValue('name', currentUser.displayName || '');
           }
@@ -78,22 +70,8 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      const userRef = ref(db, `users/${user.uid}`);
-      const snapshot = await get(userRef);
-      const currentUserProfile = snapshot.val() as UserProfile;
-
-      let newAvatarUrl = currentUserProfile?.avatarUrl ?? user.photoURL ?? '';
-
-      if (data.image && data.image[0]) {
-        const imageFile = data.image[0];
-        const imageStorageRef = storageRef(storage, `avatars/${user.uid}/${imageFile.name}`);
-        const uploadResult = await uploadBytes(imageStorageRef, imageFile);
-        newAvatarUrl = await getDownloadURL(uploadResult.ref);
-      }
-
       await updateProfile(user, { 
         displayName: data.name,
-        photoURL: newAvatarUrl
       });
 
       const updatedProfileData: UserProfile = {
@@ -101,12 +79,9 @@ export default function ProfilePage() {
         name: data.name,
         username: data.username,
         email: user.email!,
-        avatarUrl: newAvatarUrl,
       };
 
       await set(ref(db, `users/${user.uid}`), updatedProfileData);
-      
-      setImagePreview(newAvatarUrl);
       
       toast({
         title: 'Perfil Atualizado!',
@@ -134,18 +109,6 @@ export default function ProfilePage() {
     form.setValue('username', value, { shouldValidate: true });
   };
 
-  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setImagePreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-      form.setValue('image', e.target.files);
-    }
-  }
-
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 lg:px-8">
       <Card>
@@ -156,28 +119,6 @@ export default function ProfilePage() {
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              <FormField
-                control={form.control}
-                name="image"
-                render={({ field }) => (
-                  <FormItem className="flex flex-col items-center gap-4 text-center">
-                     <FormLabel>Foto de Perfil</FormLabel>
-                    <Avatar className="h-24 w-24">
-                       <AvatarImage src={imagePreview ?? undefined} alt="Foto de perfil do usuário" data-ai-hint="person avatar" />
-                       <AvatarFallback><UserCircle className="h-full w-full text-muted-foreground"/></AvatarFallback>
-                    </Avatar>
-                    <FormControl>
-                      <Input 
-                        type="file" 
-                        accept="image/*" 
-                        className="max-w-xs"
-                        onChange={handleImageChange}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
                <FormField
                 control={form.control}
                 name="name"
