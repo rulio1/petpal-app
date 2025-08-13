@@ -14,11 +14,18 @@ const firebaseConfig = {
   "apiKey": "AIzaSyDMTTfqmPr46uFWZ-F5OqOZzLMK-IZX6cY",
   "authDomain": "petpal-2xowu.firebaseapp.com",
   "measurementId": "",
-  "messagingSenderId": "350592436528"
+  "messagingSenderId": "350592436528",
+  "databaseURL": "https://petpal-2xowu-default-rtdb.firebaseio.com"
 };
 
 // Initialize Firebase
-const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
+let app;
+if (!getApps().length) {
+    app = initializeApp(firebaseConfig);
+} else {
+    app = getApp();
+}
+
 const db = getDatabase(app);
 const storage = getStorage(app);
 const auth = getAuth(app);

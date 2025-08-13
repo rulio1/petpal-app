@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import Image from 'next/image';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -95,13 +94,17 @@ export default function ProfilePage() {
         photoURL: newAvatarUrl
       });
 
-      await set(ref(db, `users/${user.uid}`), {
+      const updatedProfile: UserProfile = {
         uid: user.uid,
         name: data.name,
         username: data.username,
-        email: user.email,
+        email: user.email!,
         avatarUrl: newAvatarUrl,
-      });
+      };
+
+      await set(ref(db, `users/${user.uid}`), updatedProfile);
+      
+      setUserProfile(updatedProfile);
 
       toast({
         title: 'Perfil Atualizado!',
