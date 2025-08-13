@@ -12,7 +12,7 @@ import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Loader2, Wand2 } from 'lucide-react';
+import { PawPrint, Wand2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { getPetHealthSuggestions } from '@/ai/flows/pet-health-suggestions';
 import { db, storage } from '@/lib/firebase';
@@ -291,7 +291,7 @@ export function AddPetForm() {
 
             <div className="space-y-4 pt-4">
               <Button type="button" variant="outline" onClick={handleGetHealthSuggestion} disabled={isAiLoading} className="w-full md:w-auto">
-                {isAiLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                {isAiLoading ? <PawPrint className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
                 Obter Sugestões de Saúde com IA
               </Button>
 
@@ -313,7 +313,7 @@ export function AddPetForm() {
             <div className="flex justify-end space-x-2 pt-6">
               <Button type="button" variant="ghost" onClick={() => router.back()}>Cancelar</Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isSubmitting && <PawPrint className="mr-2 h-4 w-4 animate-spin" />}
                 Adicionar Pet
               </Button>
             </div>

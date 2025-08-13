@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { PetCard } from '@/components/pet-card';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, PawPrint } from 'lucide-react';
 import type { Pet } from '@/lib/types';
 import { db } from '@/lib/firebase';
 import { ref, onValue } from "firebase/database";
@@ -49,7 +49,7 @@ export default function DashboardPage() {
 
       {loading ? (
         <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          <PawPrint className="h-8 w-8 animate-spin text-primary" />
         </div>
       ) : pets.length > 0 ? (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
@@ -59,8 +59,8 @@ export default function DashboardPage() {
         </div>
       ) : (
         <div className="text-center py-16 border-2 border-dashed rounded-lg">
-          <h2 className="text-xl font-semibold">Nenhum pet ainda!</h2>
-          <p className="text-muted-foreground mt-2">Comece adicionando seu primeiro pet.</p>
+          <h2 className="text-xl font-semibold">Você ainda não registrou nenhum pet.</h2>
+          <p className="text-muted-foreground mt-2">Vamos começar adicionando seu primeiro amigo!</p>
           <Button asChild className="mt-4">
             <Link href="/dashboard/add-pet">
               <PlusCircle className="mr-2 h-4 w-4" />

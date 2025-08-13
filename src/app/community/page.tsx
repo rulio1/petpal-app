@@ -13,7 +13,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Send, Loader2 } from 'lucide-react';
+import { Send, PawPrint } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
 
@@ -86,7 +86,7 @@ export default function CommunityPage() {
             <div className="space-y-6">
               {loading ? (
                 <div className="flex justify-center items-center h-full">
-                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                  <PawPrint className="h-8 w-8 animate-spin text-primary" />
                 </div>
               ) : posts.length > 0 ? (
                 posts.map((post) => (
@@ -142,7 +142,7 @@ export default function CommunityPage() {
                     )}
                   />
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
-                    {form.formState.isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                    {form.formState.isSubmitting ? <PawPrint className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                     Publicar na Comunidade
                   </Button>
                 </form>

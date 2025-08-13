@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { PawPrint, Loader2 } from 'lucide-react';
+import { PawPrint } from 'lucide-react';
 import { auth } from '@/lib/firebase';
 import { createUserWithEmailAndPassword } from 'firebase/auth';
 import { useToast } from "@/hooks/use-toast";
@@ -46,7 +46,7 @@ export default function SignupPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <main className="w-full max-w-md mx-auto">
-        <Card className="w-full">
+        <Card className="w-full animate-fade-in">
           <CardHeader className="text-center">
             <div className="flex justify-center items-center mb-4">
               <PawPrint className="h-10 w-10 text-primary" />
@@ -69,7 +69,7 @@ export default function SignupPage() {
                 <Input id="password" type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
               </div>
               <Button type="submit" className="w-full" disabled={isLoading}>
-                {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                {isLoading && <PawPrint className="mr-2 h-4 w-4 animate-spin" />}
                 Criar Conta
               </Button>
             </form>
