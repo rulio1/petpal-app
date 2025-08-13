@@ -176,7 +176,7 @@ export default function ProfilePage() {
                   <FormItem className="flex flex-col items-center gap-4 text-center">
                      <FormLabel>Foto de Perfil</FormLabel>
                     <Avatar className="h-24 w-24">
-                       <AvatarImage src={imagePreview ?? undefined} alt="Foto de perfil do usuário" />
+                       <AvatarImage src={imagePreview ?? undefined} alt="Foto de perfil do usuário" data-ai-hint="person avatar" />
                        <AvatarFallback><UserCircle className="h-full w-full text-muted-foreground"/></AvatarFallback>
                     </Avatar>
                     <FormControl>
