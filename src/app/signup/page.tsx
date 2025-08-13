@@ -8,12 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PawPrint } from 'lucide-react';
 
-export default function LoginPage() {
+export default function SignupPage() {
   const router = useRouter();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleSignup = (e: React.FormEvent) => {
     e.preventDefault();
-    // Mock login logic
+    // Mock signup logic
     router.push('/dashboard');
   };
 
@@ -25,11 +25,15 @@ export default function LoginPage() {
             <div className="flex justify-center items-center mb-4">
               <PawPrint className="h-10 w-10 text-primary" />
             </div>
-            <CardTitle className="text-3xl font-headline">Welcome to PetPal</CardTitle>
-            <CardDescription>Sign in to manage your furry friends.</CardDescription>
+            <CardTitle className="text-3xl font-headline">Create your PetPal Account</CardTitle>
+            <CardDescription>Join our community of pet lovers.</CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <form onSubmit={handleSignup} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="name">Name</Label>
+                <Input id="name" type="text" placeholder="Your Name" required />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input id="email" type="email" placeholder="you@example.com" required />
@@ -39,13 +43,13 @@ export default function LoginPage() {
                 <Input id="password" type="password" required />
               </div>
               <Button type="submit" className="w-full">
-                Login
+                Create Account
               </Button>
             </form>
             <div className="mt-4 text-center text-sm">
-              Don't have an account?{' '}
-              <Link href="/signup" className="underline text-primary">
-                Sign up
+              Already have an account?{' '}
+              <Link href="/" className="underline text-primary">
+                Login
               </Link>
             </div>
           </CardContent>
