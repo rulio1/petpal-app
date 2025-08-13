@@ -82,6 +82,7 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
+      // Check if username is taken by another user
       const usersRef = ref(db, 'users');
       const usernameQuery = query(usersRef, orderByChild('username'), equalTo(data.username));
       const snapshot = await get(usernameQuery);
@@ -89,6 +90,7 @@ export default function ProfilePage() {
       if (snapshot.exists()) {
         let isTaken = false;
         snapshot.forEach((childSnapshot) => {
+          // If a user with this username exists and it's not the current user
           if (childSnapshot.key !== user.uid) {
             isTaken = true;
           }

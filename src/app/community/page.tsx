@@ -160,7 +160,7 @@ export default function CommunityPage() {
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={form.formState.isSubmitting}>
+                  <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !userProfile}>
                     {form.formState.isSubmitting ? <PawPrint className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
                     Publicar na Comunidade
                   </Button>
