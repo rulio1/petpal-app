@@ -36,7 +36,7 @@ export function AppHeader() {
         onValue(userRef, (snapshot) => {
           const data = snapshot.val();
           if (data) {
-            setUserProfile(data);
+            setUserProfile({ uid: currentUser.uid, ...data });
           }
         });
       } else {
@@ -87,7 +87,7 @@ export function AppHeader() {
           ))}
         </nav>
         <div className="ml-auto flex items-center space-x-4">
-           {user && (
+           {user && userProfile && (
             <Popover>
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
@@ -107,7 +107,7 @@ export function AppHeader() {
                 <Separator className="my-2" />
                 <div className="flex flex-col space-y-1">
                   <Button variant="ghost" size="sm" className="justify-start" asChild>
-                     <Link href="/dashboard/profile">Meu Perfil</Link>
+                     <Link href={`/profile/${user.uid}`}>Meu Perfil</Link>
                   </Button>
                    <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignOut} asChild>
                     <Link href="/">Sair</Link>

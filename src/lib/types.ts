@@ -17,7 +17,6 @@ export interface Pet {
 export interface CommunityPost {
   id: string;
   author: string;
-  avatarUrl: string;
   timestamp: string;
   content: string;
   userId: string;
@@ -28,5 +27,4 @@ export interface UserProfile {
   name: string;
   username: string;
   email: string;
-  avatarUrl: string;
 }
