@@ -249,15 +249,11 @@ export default function CommunityPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            {post.authorProfile ? (
                             <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
-                                <p className="font-semibold text-primary">{post.authorProfile.name}</p>
-                                {post.authorProfile.username === '@Rulio' && <VerifiedBadge />}
-                                <p className="text-sm text-muted-foreground ml-2">{post.authorProfile.username}</p>
+                                <p className="font-semibold text-primary">{post.authorProfile?.name || post.author}</p>
+                                {post.username === '@Rulio' && <VerifiedBadge />}
+                                <p className="text-sm text-muted-foreground ml-2">{post.authorProfile?.username || post.username}</p>
                             </Link>
-                            ) : (
-                                 <p className="font-semibold text-primary">{post.author || 'Usuário anônimo'}</p>
-                            )}
                             <div className="flex items-center gap-2 ml-4">
                                 <Globe className="w-3 h-3 text-muted-foreground" />
                                 <p className="text-xs text-muted-foreground">
@@ -383,5 +379,3 @@ export default function CommunityPage() {
     </>
   );
 }
-
-    
