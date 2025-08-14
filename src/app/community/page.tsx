@@ -16,7 +16,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost, UserProfile } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Send, PawPrint, Heart, Repeat, MessageSquare } from 'lucide-react';
+import { Send, PawPrint, Heart, Repeat, MessageSquare, Globe } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
 import { ref, push, set, onValue, query, orderByChild, get, update, increment } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
@@ -167,21 +167,24 @@ export default function CommunityPage() {
                             {post.username === '@Rulio' && <VerifiedBadge />}
                             <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
                           </Link>
-                          <p className="text-xs text-muted-foreground">
-                            {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
-                          </p>
+                          <div className="flex items-center gap-2">
+                            <Globe className="w-3 h-3 text-muted-foreground" />
+                            <p className="text-xs text-muted-foreground">
+                              {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
+                            </p>
+                          </div>
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
                         <div className="flex items-center gap-6 text-muted-foreground mt-4">
-                            <button onClick={() => handleLike(post.id)} className="flex items-center gap-1 group">
+                            <button onClick={() => handleLike(post.id)} className="flex items-center gap-1 group disabled:opacity-50" disabled={!user}>
                                 <Heart className={`w-4 h-4 group-hover:text-red-500 ${post.likes && user && post.likes[user.uid] ? 'text-red-500 fill-current' : ''}`} />
                                 <span className="text-xs">{post.likes ? Object.keys(post.likes).length : 0}</span>
                             </button>
-                            <button className="flex items-center gap-1 group">
+                            <button className="flex items-center gap-1 group disabled:opacity-50" disabled={!user}>
                                 <MessageSquare className="w-4 h-4 group-hover:text-primary" />
                                 <span className="text-xs">{post.replyCount || 0}</span>
                             </button>
-                            <button className="flex items-center gap-1 group">
+                            <button className="flex items-center gap-1 group disabled:opacity-50" disabled={!user}>
                                 <Repeat className="w-4 h-4 group-hover:text-green-500" />
                                 <span className="text-xs">{post.reposts ? Object.keys(post.reposts).length : 0}</span>
                             </button>
@@ -225,7 +228,7 @@ export default function CommunityPage() {
                   />
                   <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !userProfile}>
                     {form.formState.isSubmitting ? <PawPrint className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
-                    Publicar na Comunidade
+                    {user ? 'Publicar na Comunidade' : 'Faça login para publicar'}
                   </Button>
                 </form>
               </Form>
