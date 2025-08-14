@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { PawPrint, Users, LayoutDashboard } from 'lucide-react';
+import { PawPrint, Users, LayoutDashboard, Bell, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -18,6 +18,8 @@ import type { UserProfile } from '@/lib/types';
 const navLinks = [
   { href: '/dashboard', label: 'Painel', icon: LayoutDashboard },
   { href: '/community', label: 'Comunidade', icon: Users },
+  { href: '/notifications', label: 'Notificações', icon: Bell },
+  { href: '/search', label: 'Buscar', icon: Search },
 ];
 
 export function AppHeader() {
