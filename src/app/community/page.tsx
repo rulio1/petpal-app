@@ -6,18 +6,22 @@ import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
+import {
+  Card,
+  CardContent
+} from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost, UserProfile } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Send, PawPrint } from 'lucide-react';
+import { Send, PawPrint, Heart, Repeat, MessageSquare } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild, get } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, get, update, increment } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { VerifiedBadge } from '@/components/verified-badge';
+import Link from 'next/link';
 
 const postSchema = z.object({
   content: z.string().min(1, 'A publicação não pode estar vazia.').max(500, 'A publicação não pode exceder 500 caracteres.'),
@@ -53,18 +57,21 @@ export default function CommunityPage() {
       const data = snapshot.val();
       const postList: PostWithUser[] = [];
       if (data) {
-        for (const key in data) {
+        const postPromises = Object.keys(data).map(async (key) => {
           const post = { id: key, ...data[key] };
-          const userRef = ref(db, 'users/' + post.userId);
-          const userSnap = await get(userRef);
-          if (userSnap.exists()) {
-              post.username = userSnap.val().username;
+          if (post.userId) {
+            const userRef = ref(db, 'users/' + post.userId);
+            const userSnap = await get(userRef);
+            if (userSnap.exists()) {
+                post.username = userSnap.val().username;
+            }
           }
-          postList.push(post);
-        }
-        postList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+          return post;
+        });
+        const resolvedPosts = await Promise.all(postPromises);
+        resolvedPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setPosts(resolvedPosts);
       }
-      setPosts(postList);
       setLoading(false);
     }, (error) => {
       console.error("Firebase read failed: " + error.message);
@@ -91,9 +98,14 @@ export default function CommunityPage() {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
         author: userProfile.name,
+        username: userProfile.username,
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
+        likes: {},
+        reposts: {},
+        replies: {},
+        replyCount: 0,
       };
       await set(newPostRef, newPost);
       form.reset();
@@ -101,6 +113,29 @@ export default function CommunityPage() {
         console.error("Could not save post to Firebase", error);
     }
   };
+
+  const handleLike = async (postId: string) => {
+    if (!user) return;
+    const postRef = ref(db, `posts/${postId}/likes/${user.uid}`);
+    const postLikeSnap = await get(postRef);
+    const updates: { [key: string]: any } = {};
+
+    if (postLikeSnap.exists()) {
+      updates[`/posts/${postId}/likes/${user.uid}`] = null;
+    } else {
+      updates[`/posts/${postId}/likes/${user.uid}`] = true;
+    }
+    await update(ref(db), updates);
+  };
+
+  const getInitials = (name: string) => {
+    if (!name) return 'U';
+    const names = name.split(' ');
+    if (names.length > 1) {
+      return names[0][0] + names[names.length - 1][0];
+    }
+    return name[0];
+  }
 
   return (
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
@@ -110,7 +145,7 @@ export default function CommunityPage() {
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2">
-          <ScrollArea className="h-[65vh] pr-4 -mr-4">
+          <ScrollArea className="h-[calc(100vh-250px)] pr-4 -mr-4">
             <div className="space-y-6">
               {loading ? (
                 <div className="flex justify-center items-center h-full">
@@ -120,20 +155,37 @@ export default function CommunityPage() {
                 posts.map((post) => (
                   <Card key={post.id} className="p-4 bg-card/80">
                     <div className="flex items-start space-x-4">
-                      <Avatar>
-                        <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
-                      </Avatar>
+                      <Link href={`/profile/${post.userId}`}>
+                        <Avatar>
+                          <AvatarFallback>{getInitials(post.author)}</AvatarFallback>
+                        </Avatar>
+                      </Link>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <div className="flex items-center">
+                          <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
                             <p className="font-semibold text-primary">{post.author}</p>
                             {post.username === '@Rulio' && <VerifiedBadge />}
-                          </div>
+                            <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
+                          </Link>
                           <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
                           </p>
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
+                        <div className="flex items-center gap-6 text-muted-foreground mt-4">
+                            <button onClick={() => handleLike(post.id)} className="flex items-center gap-1 group">
+                                <Heart className={`w-4 h-4 group-hover:text-red-500 ${post.likes && user && post.likes[user.uid] ? 'text-red-500 fill-current' : ''}`} />
+                                <span className="text-xs">{post.likes ? Object.keys(post.likes).length : 0}</span>
+                            </button>
+                            <button className="flex items-center gap-1 group">
+                                <MessageSquare className="w-4 h-4 group-hover:text-primary" />
+                                <span className="text-xs">{post.replyCount || 0}</span>
+                            </button>
+                            <button className="flex items-center gap-1 group">
+                                <Repeat className="w-4 h-4 group-hover:text-green-500" />
+                                <span className="text-xs">{post.reposts ? Object.keys(post.reposts).length : 0}</span>
+                            </button>
+                        </div>
                       </div>
                     </div>
                   </Card>
