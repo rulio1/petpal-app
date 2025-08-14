@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -18,7 +18,6 @@ import type { UserProfile } from '@/lib/types';
 const profileFormSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
   username: z.string().min(3, 'O nome de usuário deve ter pelo menos 3 caracteres.').refine(val => val.startsWith('@'), { message: 'O nome de usuário deve começar com @.'}),
-  email: z.string().email('Por favor, insira um email válido.'),
 });
 
 type ProfileFormValues = z.infer<typeof profileFormSchema>;
@@ -27,43 +26,48 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
       username: '',
-      email: '',
     },
   });
 
+  const loadUserData = useCallback((currentUser: User) => {
+    const userRef = ref(db, `users/${currentUser.uid}`);
+    get(userRef).then((snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val() as Omit<UserProfile, 'email' | 'uid'>;
+        form.reset({
+          name: data.name || currentUser.displayName || '',
+          username: data.username || '',
+        });
+      } else {
+        // If no data in DB, use Auth data as fallback
+        form.reset({
+          name: currentUser.displayName || '',
+          username: '',
+        });
+      }
+      setIsLoading(false);
+    });
+  }, [form]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
-      setUser(currentUser);
       if (currentUser) {
-        const userRef = ref(db, `users/${currentUser.uid}`);
-        get(userRef).then((snapshot) => {
-          if (snapshot.exists()) {
-            const data = snapshot.val() as UserProfile;
-            setUserProfile(data);
-            form.reset({
-              name: data.name || currentUser.displayName || '',
-              username: data.username || '',
-              email: currentUser.email || '',
-            });
-          } else {
-            form.reset({
-              name: currentUser.displayName || '',
-              username: '',
-              email: currentUser.email || '',
-            });
-          }
-        });
+        setUser(currentUser);
+        loadUserData(currentUser);
+      } else {
+        setUser(null);
+        setIsLoading(false);
       }
     });
     return () => unsubscribe();
-  }, [form]);
+  }, [loadUserData]);
 
 
   async function onSubmit(data: ProfileFormValues) {
@@ -74,36 +78,32 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      // Update Firebase Auth display name
+      // 1. Update Firebase Auth display name (important for other services)
       if (user.displayName !== data.name) {
         await updateProfile(user, { 
           displayName: data.name,
         });
       }
 
-      // Prepare data for Realtime Database update
-      const updatedProfileData = {
-        name: data.name,
-        username: data.username,
-      };
-
-      // Update Realtime Database
-      const userRef = ref(db, `users/${user.uid}`);
-      await update(userRef, updatedProfileData);
+      // 2. Prepare data for a single, atomic update to Realtime Database
+      const updates: { [key: string]: any } = {};
+      updates[`/users/${user.uid}/name`] = data.name;
+      updates[`/users/${user.uid}/username`] = data.username;
       
-      // Update local state to reflect changes immediately
-      setUserProfile(prevProfile => ({...prevProfile!, ...updatedProfileData}));
+      // 3. Execute the atomic update
+      await update(ref(db), updates);
       
       toast({
         title: 'Perfil Atualizado!',
         description: 'Suas informações foram salvas com sucesso.',
       });
-    } catch (error) {
+
+    } catch (error: any) {
         console.error("Erro ao atualizar perfil:", error);
         toast({
             variant: "destructive",
             title: "Falha ao atualizar",
-            description: "Ocorreu um erro ao atualizar seu perfil. Verifique as regras do banco de dados e tente novamente.",
+            description: `Ocorreu um erro ao atualizar seu perfil. Verifique as regras do banco de dados e tente novamente. Código: ${error.code}`,
         });
     } finally {
         setIsSubmitting(false);
@@ -119,6 +119,16 @@ export default function ProfilePage() {
     }
     form.setValue('username', value, { shouldValidate: true });
   };
+  
+  if (isLoading) {
+    return (
+      <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 lg:px-8">
+        <div className="flex justify-center items-center h-64">
+            <PawPrint className="h-8 w-8 animate-spin text-primary" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto max-w-2xl py-8 px-4 sm:px-6 lg:px-8">
@@ -163,7 +173,7 @@ export default function ProfilePage() {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="seu@email.com" {...field} disabled />
+                      <Input placeholder="seu@email.com" value={user?.email || ''} disabled />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
