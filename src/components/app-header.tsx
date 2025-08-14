@@ -13,6 +13,7 @@ import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import type { UserProfile } from '@/lib/types';
+import { VerifiedBadge } from '@/components/verified-badge';
 
 
 const navLinks = [
@@ -98,7 +99,10 @@ export function AppHeader() {
               <PopoverContent className="w-56" align="end" forceMount>
                 <div className="flex flex-col space-y-2 text-center leading-none">
                   <p className="text-sm font-medium">{userProfile?.name}</p>
-                   <p className="text-xs text-muted-foreground">{userProfile?.username}</p>
+                   <div className="flex items-center justify-center">
+                    <p className="text-xs text-muted-foreground">{userProfile?.username}</p>
+                    {userProfile?.username === '@rulio' && <VerifiedBadge />}
+                   </div>
                 </div>
                 <Separator className="my-2" />
                 <div className="flex flex-col space-y-1">

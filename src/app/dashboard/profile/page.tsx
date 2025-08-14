@@ -12,8 +12,10 @@ import { PawPrint } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { ref, get, update } from "firebase/database";
+import { ref, get, set, update } from "firebase/database";
 import type { UserProfile } from '@/lib/types';
+import { VerifiedBadge } from '@/components/verified-badge';
+
 
 const profileFormSchema = z.object({
   name: z.string().min(2, 'O nome deve ter pelo menos 2 caracteres.'),
@@ -150,9 +152,12 @@ export default function ProfilePage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Nome de Usuário</FormLabel>
-                    <FormControl>
-                      <Input placeholder="@seunome" {...field} onChange={handleUsernameChange}/>
-                    </FormControl>
+                    <div className="flex items-center">
+                      <FormControl>
+                        <Input placeholder="@seunome" {...field} onChange={handleUsernameChange}/>
+                      </FormControl>
+                      {field.value === '@rulio' && <VerifiedBadge />}
+                    </div>
                     <FormMessage />
                   </FormItem>
                 )}

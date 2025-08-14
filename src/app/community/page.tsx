@@ -15,15 +15,20 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, get } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
+import { VerifiedBadge } from '@/components/verified-badge';
 
 const postSchema = z.object({
   content: z.string().min(1, 'A publicação não pode estar vazia.').max(500, 'A publicação não pode exceder 500 caracteres.'),
 });
 
+interface PostWithUser extends CommunityPost {
+    username?: string;
+}
+
 export default function CommunityPage() {
-  const [posts, setPosts] = useState<CommunityPost[]>([]);
+  const [posts, setPosts] = useState<PostWithUser[]>([]);
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -44,12 +49,18 @@ export default function CommunityPage() {
     });
 
     const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
-    const unsubscribePosts = onValue(postsRef, (snapshot) => {
+    const unsubscribePosts = onValue(postsRef, async (snapshot) => {
       const data = snapshot.val();
-      const postList: CommunityPost[] = [];
+      const postList: PostWithUser[] = [];
       if (data) {
         for (const key in data) {
-          postList.push({ id: key, ...data[key] });
+          const post = { id: key, ...data[key] };
+          const userRef = ref(db, 'users/' + post.userId);
+          const userSnap = await get(userRef);
+          if (userSnap.exists()) {
+              post.username = userSnap.val().username;
+          }
+          postList.push(post);
         }
         postList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
       }
@@ -83,6 +94,7 @@ export default function CommunityPage() {
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
+        avatarUrl: ''
       };
       await set(newPostRef, newPost);
       form.reset();
@@ -114,7 +126,10 @@ export default function CommunityPage() {
                       </Avatar>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="font-semibold text-primary">{post.author}</p>
+                          <div className="flex items-center">
+                            <p className="font-semibold text-primary">{post.author}</p>
+                            {post.username === '@rulio' && <VerifiedBadge />}
+                          </div>
                           <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
                           </p>

@@ -9,6 +9,8 @@ import { db, auth } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { UserProfile } from '@/lib/types';
+import { VerifiedBadge } from '@/components/verified-badge';
+
 
 export default function SearchPage() {
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -90,7 +92,10 @@ export default function SearchPage() {
                 <Avatar className="h-20 w-20 mx-auto mb-4">
                   <AvatarFallback className="text-2xl">{getInitials(user.name)}</AvatarFallback>
                 </Avatar>
-                <h3 className="text-lg font-semibold text-primary">{user.name}</h3>
+                <div className="flex items-center justify-center">
+                    <h3 className="text-lg font-semibold text-primary">{user.name}</h3>
+                    {user.username === '@rulio' && <VerifiedBadge />}
+                </div>
                 <p className="text-sm text-muted-foreground">{user.username}</p>
               </CardContent>
             </Card>
