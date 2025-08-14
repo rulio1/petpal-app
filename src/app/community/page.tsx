@@ -127,7 +127,7 @@ export default function CommunityPage() {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
                             <p className="font-semibold text-primary">{post.author}</p>
-                            {post.username === '@rulio' && <VerifiedBadge />}
+                            {post.username === '@Rulio' && <VerifiedBadge />}
                           </div>
                           <p className="text-xs text-muted-foreground">
                             {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}

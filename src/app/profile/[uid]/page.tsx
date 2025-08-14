@@ -98,7 +98,7 @@ export default function UserProfilePage() {
              <div className="mt-4">
                 <div className="flex items-center gap-1">
                     <h2 className="text-2xl font-bold">{userProfile.name}</h2>
-                    {userProfile.username === '@rulio' && <VerifiedBadge />}
+                    {userProfile.username === '@Rulio' && <VerifiedBadge />}
                 </div>
                 <p className="text-md text-muted-foreground">{userProfile.username}</p>
              </div>

@@ -87,7 +87,7 @@ export default function SearchPage() {
                   </Avatar>
                   <div className="flex items-center justify-center">
                       <h3 className="text-lg font-semibold text-primary">{user.name}</h3>
-                      {user.username === '@rulio' && <VerifiedBadge />}
+                      {user.username === '@Rulio' && <VerifiedBadge />}
                   </div>
                   <p className="text-sm text-muted-foreground">{user.username}</p>
                 </CardContent>

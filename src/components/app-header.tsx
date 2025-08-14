@@ -101,7 +101,7 @@ export function AppHeader() {
                   <p className="text-sm font-medium">{userProfile?.name}</p>
                    <div className="flex items-center justify-center">
                     <p className="text-xs text-muted-foreground">{userProfile?.username}</p>
-                    {userProfile?.username === '@rulio' && <VerifiedBadge />}
+                    {userProfile?.username === '@Rulio' && <VerifiedBadge />}
                    </div>
                 </div>
                 <Separator className="my-2" />
