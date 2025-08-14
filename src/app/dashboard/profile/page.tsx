@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +12,7 @@ import { PawPrint } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from '@/lib/firebase';
 import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, get } from "firebase/database";
+import { ref, set, get, update } from "firebase/database";
 import type { UserProfile } from '@/lib/types';
 
 const profileFormSchema = z.object({
@@ -27,8 +27,8 @@ export default function ProfilePage() {
   const { toast } = useToast();
   const [user, setUser] = useState<User | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const initialLoadDone = useRef(false);
-  
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
@@ -41,26 +41,30 @@ export default function ProfilePage() {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser && !initialLoadDone.current) {
-        form.setValue('email', currentUser.email || '');
+      if (currentUser) {
         const userRef = ref(db, `users/${currentUser.uid}`);
         get(userRef).then((snapshot) => {
           if (snapshot.exists()) {
             const data = snapshot.val() as UserProfile;
+            setUserProfile(data);
             form.reset({
               name: data.name || currentUser.displayName || '',
               username: data.username || '',
               email: currentUser.email || '',
             });
           } else {
-             form.setValue('name', currentUser.displayName || '');
+            form.reset({
+              name: currentUser.displayName || '',
+              username: '',
+              email: currentUser.email || '',
+            });
           }
-          initialLoadDone.current = true;
         });
       }
     });
     return () => unsubscribe();
   }, [form]);
+
 
   async function onSubmit(data: ProfileFormValues) {
     if (!user) {
@@ -70,18 +74,25 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      await updateProfile(user, { 
-        displayName: data.name,
-      });
+      // Update Firebase Auth display name
+      if (user.displayName !== data.name) {
+        await updateProfile(user, { 
+          displayName: data.name,
+        });
+      }
 
-      const updatedProfileData: UserProfile = {
-        uid: user.uid,
+      // Prepare data for Realtime Database update
+      const updatedProfileData = {
         name: data.name,
         username: data.username,
-        email: user.email!,
       };
 
-      await set(ref(db, `users/${user.uid}`), updatedProfileData);
+      // Update Realtime Database
+      const userRef = ref(db, `users/${user.uid}`);
+      await update(userRef, updatedProfileData);
+      
+      // Update local state to reflect changes immediately
+      setUserProfile(prevProfile => ({...prevProfile!, ...updatedProfileData}));
       
       toast({
         title: 'Perfil Atualizado!',
@@ -92,7 +103,7 @@ export default function ProfilePage() {
         toast({
             variant: "destructive",
             title: "Falha ao atualizar",
-            description: "Ocorreu um erro ao atualizar seu perfil. Tente novamente.",
+            description: "Ocorreu um erro ao atualizar seu perfil. Verifique as regras do banco de dados e tente novamente.",
         });
     } finally {
         setIsSubmitting(false);
