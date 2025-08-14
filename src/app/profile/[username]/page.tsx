@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { ref, onValue, query, orderByChild, equalTo, update, push } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, update, push, get } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { UserProfile, CommunityPost } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
@@ -15,10 +15,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
+  const { toast } = useToast();
   const { username } = params;
   
   const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
@@ -50,7 +52,7 @@ export default function UserProfilePage() {
     setLoading(true);
 
     const usersRef = ref(db, 'users');
-    const userQuery = query(usersRef, orderByChild('username'), equalTo(`@${username.replace('@','')}`));
+    const userQuery = query(usersRef, orderByChild('username'), equalTo(`@${username}`));
     
     const unsubscribeProfile = onValue(userQuery, (snapshot) => {
       if (snapshot.exists()) {
@@ -95,6 +97,9 @@ export default function UserProfilePage() {
         setTargetUser(null);
       }
       setLoading(false);
+    }, (error) => {
+        console.error("Firebase read failed:", error);
+        setLoading(false);
     });
 
     return () => unsubscribeProfile();
@@ -146,6 +151,7 @@ export default function UserProfilePage() {
       await update(ref(db), updates);
     } catch (error) {
         console.error("Failed to update follow status", error);
+        toast({ variant: 'destructive', title: 'Erro', description: 'Não foi possível atualizar o status.'})
     }
   };
 
@@ -157,6 +163,37 @@ export default function UserProfilePage() {
     }
     return name ? name[0] : '';
   };
+  
+  const handleLike = async (post: CommunityPost) => {
+    if (!currentUser || !currentUserProfile) return;
+    const postId = post.id;
+    const postRef = ref(db, `posts/${postId}/likes/${currentUser.uid}`);
+    const postLikeSnap = await get(postRef);
+    const updates: { [key: string]: any } = {};
+    const alreadyLiked = postLikeSnap.exists();
+
+    if (alreadyLiked) {
+      updates[`/posts/${postId}/likes/${currentUser.uid}`] = null;
+    } else {
+      updates[`/posts/${postId}/likes/${currentUser.uid}`] = true;
+      if (post.userId !== currentUser.uid) {
+        const notificationRef = push(ref(db, `notifications/${post.userId}`));
+        const newNotification = {
+            id: notificationRef.key,
+            type: 'like',
+            fromUserId: currentUser.uid,
+            fromUserName: currentUserProfile.name,
+            fromUserUsername: currentUserProfile.username,
+            postId: postId,
+            timestamp: new Date().toISOString(),
+            read: false,
+        };
+        updates[`/notifications/${post.userId}/${notificationRef.key}`] = newNotification;
+      }
+    }
+    await update(ref(db), updates);
+  };
+
 
   if (loading) {
     return (
@@ -205,18 +242,18 @@ export default function UserProfilePage() {
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
                         <div className="flex items-center gap-6 text-muted-foreground mt-4">
-                            <div className="flex items-center gap-1 group">
-                                <Heart className={`w-4 h-4 ${post.likes && currentUser && post.likes[currentUser.uid] ? 'text-red-500 fill-current' : ''}`} />
+                            <button onClick={() => handleLike(post)} className="flex items-center gap-1 group disabled:opacity-50" disabled={!currentUser}>
+                                <Heart className={`w-4 h-4 group-hover:text-red-500 ${post.likes && currentUser && post.likes[currentUser.uid] ? 'text-red-500 fill-current' : ''}`} />
                                 <span className="text-xs">{post.likes ? Object.keys(post.likes).length : 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1 group">
-                                <MessageSquare className="w-4 h-4" />
+                            </button>
+                            <button className="flex items-center gap-1 group disabled:opacity-50" disabled={!currentUser}>
+                                <MessageSquare className="w-4 h-4 group-hover:text-primary" />
                                 <span className="text-xs">{post.replyCount || 0}</span>
-                            </div>
-                            <div className="flex items-center gap-1 group">
-                                <Repeat className="w-4 h-4" />
+                            </button>
+                             <button className="flex items-center gap-1 group disabled:opacity-50" disabled={!currentUser}>
+                                <Repeat className="w-4 h-4 group-hover:text-green-500" />
                                 <span className="text-xs">{post.reposts ? Object.keys(post.reposts).length : 0}</span>
-                            </div>
+                            </button>
                         </div>
                       </div>
                     </div>
@@ -238,7 +275,7 @@ export default function UserProfilePage() {
                     {getInitials(targetUser.name)}
                   </AvatarFallback>
                 </Avatar>
-                {isOwnProfile ? (
+                {currentUser && (isOwnProfile ? (
                   <Button onClick={() => router.push('/dashboard/profile')}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar Perfil
@@ -248,7 +285,7 @@ export default function UserProfilePage() {
                     {isFollowing ? <UserCheck className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
                     {isFollowing ? 'Seguindo' : 'Seguir'}
                   </Button>
-                )}
+                ))}
              </div>
              <div className="mt-4">
                 <div className="flex items-center gap-1">
