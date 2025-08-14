@@ -16,12 +16,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost, UserProfile } from '@/lib/types';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
-import { Send, PawPrint, Heart, Repeat, MessageSquare, Globe } from 'lucide-react';
+import { Send, PawPrint, Heart, Repeat, MessageSquare, Globe, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild, get, update } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, get, update, remove } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { VerifiedBadge } from '@/components/verified-badge';
 import Link from 'next/link';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+  DialogClose
+} from '@/components/ui/dialog';
+import { useToast } from '@/hooks/use-toast';
 
 const postSchema = z.object({
   content: z.string().min(1, 'A publicação não pode estar vazia.').max(500, 'A publicação não pode exceder 500 caracteres.'),
@@ -36,6 +52,9 @@ export default function CommunityPage() {
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [editingPost, setEditingPost] = useState<CommunityPost | null>(null);
+  const [editedContent, setEditedContent] = useState('');
+  const { toast } = useToast();
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
@@ -71,10 +90,17 @@ export default function CommunityPage() {
         const resolvedPosts = await Promise.all(postPromises);
         resolvedPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
         setPosts(resolvedPosts);
+      } else {
+        setPosts([]);
       }
       setLoading(false);
     }, (error) => {
       console.error("Firebase read failed: " + error.message);
+      toast({
+          variant: "destructive",
+          title: "Erro ao Carregar Posts",
+          description: "Não foi possível carregar as publicações. Verifique as regras de segurança do seu banco de dados para permitir leitura pública em 'posts'.",
+      });
       setLoading(false);
     });
 
@@ -82,7 +108,7 @@ export default function CommunityPage() {
       unsubscribeAuth();
       unsubscribePosts();
     };
-  }, []);
+  }, [toast]);
 
   const form = useForm<{ content: string }>({
     resolver: zodResolver(postSchema),
@@ -127,6 +153,36 @@ export default function CommunityPage() {
     }
     await update(ref(db), updates);
   };
+  
+  const handleDeletePost = async (postId: string) => {
+    try {
+        await remove(ref(db, `posts/${postId}`));
+        toast({ title: "Publicação excluída com sucesso!" });
+    } catch (error) {
+        console.error("Error deleting post:", error);
+        toast({ variant: "destructive", title: "Erro ao excluir", description: "Não foi possível excluir a publicação." });
+    }
+  };
+
+  const handleOpenEditDialog = (post: CommunityPost) => {
+    setEditingPost(post);
+    setEditedContent(post.content);
+  };
+
+  const handleSaveEdit = async () => {
+    if (!editingPost) return;
+    try {
+        const postRef = ref(db, `posts/${editingPost.id}/content`);
+        await set(postRef, editedContent);
+        setEditingPost(null);
+        setEditedContent('');
+        toast({ title: "Publicação atualizada com sucesso!" });
+    } catch (error) {
+        console.error("Error updating post:", error);
+        toast({ variant: "destructive", title: "Erro ao editar", description: "Não foi possível salvar as alterações." });
+    }
+  };
+
 
   const getInitials = (name: string) => {
     if (!name) return 'U';
@@ -138,6 +194,7 @@ export default function CommunityPage() {
   }
 
   return (
+    <>
     <div className="container mx-auto py-8 px-4 sm:px-6 lg:px-8">
       <div className="flex justify-between items-center mb-8">
         <h1 className="text-3xl font-bold font-headline">Fórum da Comunidade</h1>
@@ -162,17 +219,38 @@ export default function CommunityPage() {
                       </Link>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
-                            <p className="font-semibold text-primary">{post.author}</p>
-                            {post.username === '@Rulio' && <VerifiedBadge />}
-                            <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
-                          </Link>
-                          <div className="flex items-center gap-2">
-                            <Globe className="w-3 h-3 text-muted-foreground" />
-                            <p className="text-xs text-muted-foreground">
-                              {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
-                            </p>
+                          <div className="flex items-center">
+                            <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
+                                <p className="font-semibold text-primary">{post.author}</p>
+                                {post.username === '@Rulio' && <VerifiedBadge />}
+                                <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
+                            </Link>
+                            <div className="flex items-center gap-2 ml-4">
+                                <Globe className="w-3 h-3 text-muted-foreground" />
+                                <p className="text-xs text-muted-foreground">
+                                {formatDistanceToNow(new Date(post.timestamp), { addSuffix: true, locale: ptBR })}
+                                </p>
+                            </div>
                           </div>
+                          {user && user.uid === post.userId && (
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-6 w-6">
+                                        <MoreHorizontal className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent>
+                                    <DropdownMenuItem onClick={() => handleOpenEditDialog(post)}>
+                                        <Edit className="mr-2 h-4 w-4" />
+                                        Editar
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => handleDeletePost(post.id)} className="text-destructive">
+                                        <Trash2 className="mr-2 h-4 w-4" />
+                                        Excluir
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                          )}
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
                         <div className="flex items-center gap-6 text-muted-foreground mt-4">
@@ -242,5 +320,33 @@ export default function CommunityPage() {
         </div>
       </div>
     </div>
+
+    {editingPost && (
+        <Dialog open={!!editingPost} onOpenChange={() => setEditingPost(null)}>
+            <DialogContent>
+                <DialogHeader>
+                    <DialogTitle>Editar Publicação</DialogTitle>
+                    <DialogDescription>
+                        Faça alterações na sua publicação e salve.
+                    </DialogDescription>
+                </DialogHeader>
+                <div className="py-4">
+                    <Textarea
+                        value={editedContent}
+                        onChange={(e) => setEditedContent(e.target.value)}
+                        rows={5}
+                        className="w-full"
+                    />
+                </div>
+                <DialogFooter>
+                    <DialogClose asChild>
+                        <Button type="button" variant="secondary">Cancelar</Button>
+                    </DialogClose>
+                    <Button type="button" onClick={handleSaveEdit}>Salvar Alterações</Button>
+                </DialogFooter>
+            </DialogContent>
+        </Dialog>
+    )}
+    </>
   );
 }
