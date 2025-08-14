@@ -60,7 +60,7 @@ export function AppHeader() {
     if (names.length > 1) {
       return names[0][0] + names[names.length - 1][0];
     }
-    return name[0];
+    return name ? name[0] : 'U';
   }
 
 
@@ -107,7 +107,7 @@ export function AppHeader() {
                 <Separator className="my-2" />
                 <div className="flex flex-col space-y-1">
                   <Button variant="ghost" size="sm" className="justify-start" asChild>
-                     <Link href={`/profile/${user.uid}`}>Meu Perfil</Link>
+                     <Link href={`/profile/${userProfile.username.replace('@','')}`}>Meu Perfil</Link>
                   </Button>
                    <Button variant="ghost" size="sm" className="justify-start" onClick={handleSignOut} asChild>
                     <Link href="/">Sair</Link>

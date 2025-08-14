@@ -20,13 +20,13 @@ export interface CommunityPost {
   timestamp: string;
   content: string;
   userId: string;
-  username: string; // Adicionado para consistência
+  username: string; 
   likes?: { [key: string]: boolean };
   reposts?: { [key: string]: boolean };
   replies?: { [key: string]: boolean };
   replyCount?: number;
   parentId?: string | null;
-  originalPost?: CommunityPost; // Para reposts
+  originalPost?: CommunityPost; 
 }
 
 export interface UserProfile {
@@ -45,7 +45,8 @@ export interface Notification {
   type: 'follow' | 'like' | 'reply';
   fromUserId: string;
   fromUserName: string;
+  fromUserUsername?: string;
   timestamp: string;
   read: boolean;
-  postId?: string; // for likes and replies
+  postId?: string; 
 }

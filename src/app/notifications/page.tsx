@@ -33,6 +33,9 @@ export default function NotificationsPage() {
           }
           setNotifications(notificationList);
           setLoading(false);
+        }, (error) => {
+            console.error(error);
+            setLoading(false);
         });
         return () => unsubscribeNotifications();
       } else {
@@ -54,19 +57,19 @@ export default function NotificationsPage() {
   const getNotificationLink = (notification: Notification) => {
     switch (notification.type) {
         case 'follow':
-            return `/profile/${notification.fromUserId}`;
+            return `/profile/${notification.fromUserUsername?.replace('@', '')}`;
         case 'like':
         case 'reply':
-            // This would ideally link to the specific post, which requires more complex state management
-            // For now, we can link to the community page or the user's profile.
+            // This would ideally link to the specific post.
+            // For now, we link to the community page.
             return `/community`; 
         default:
             return '#';
     }
   }
 
-
   const renderNotification = (notification: Notification) => {
+    const profileLink = `/profile/${notification.fromUserUsername?.replace('@', '')}`;
     switch (notification.type) {
       case 'follow':
         return (
@@ -74,7 +77,7 @@ export default function NotificationsPage() {
             <UserPlus className="h-6 w-6 text-primary" />
             <div className="flex-1">
               <p>
-                <Link href={`/profile/${notification.fromUserId}`} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
+                <Link href={profileLink} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
                 {' '} começou a seguir você.
               </p>
               <p className="text-xs text-muted-foreground">
@@ -89,7 +92,7 @@ export default function NotificationsPage() {
             <Heart className="h-6 w-6 text-red-500" />
             <div className="flex-1">
               <p>
-                <Link href={`/profile/${notification.fromUserId}`} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
+                <Link href={profileLink} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
                 {' '} curtiu sua publicação.
               </p>
               <p className="text-xs text-muted-foreground">

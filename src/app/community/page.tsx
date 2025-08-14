@@ -173,6 +173,7 @@ export default function CommunityPage() {
             type: 'like',
             fromUserId: user.uid,
             fromUserName: userProfile.name,
+            fromUserUsername: userProfile.username,
             postId: postId,
             timestamp: new Date().toISOString(),
             read: false,
@@ -219,7 +220,7 @@ export default function CommunityPage() {
     if (names.length > 1) {
       return names[0][0] + names[names.length - 1][0];
     }
-    return name[0];
+    return name ? name[0] : '';
   }
 
   return (
@@ -241,7 +242,7 @@ export default function CommunityPage() {
                 posts.map((post) => (
                   <Card key={post.id} className="p-4 bg-card/80">
                     <div className="flex items-start space-x-4">
-                       <Link href={`/profile/${post.userId}`}>
+                       <Link href={`/profile/${post.username.replace('@','')}`}>
                         <Avatar>
                           <AvatarFallback>{getInitials(post.authorProfile?.name)}</AvatarFallback>
                         </Avatar>
@@ -249,10 +250,10 @@ export default function CommunityPage() {
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
-                            <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
+                            <Link href={`/profile/${post.username.replace('@','')}`} className="flex items-center hover:underline">
                                 <p className="font-semibold text-primary">{post.authorProfile?.name || post.author}</p>
                                 {post.username === '@Rulio' && <VerifiedBadge />}
-                                <p className="text-sm text-muted-foreground ml-2">{post.authorProfile?.username || post.username}</p>
+                                <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
                             </Link>
                             <div className="flex items-center gap-2 ml-4">
                                 <Globe className="w-3 h-3 text-muted-foreground" />

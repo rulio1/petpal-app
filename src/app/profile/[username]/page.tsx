@@ -3,9 +3,9 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { ref, onValue, query, orderByChild, equalTo, update, push, set } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, update, push } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import type { UserProfile, CommunityPost, Pet } from '@/lib/types';
+import type { UserProfile, CommunityPost } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
@@ -19,8 +19,9 @@ import Link from 'next/link';
 export default function UserProfilePage() {
   const params = useParams();
   const router = useRouter();
-  const { uid } = params;
-  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const { username } = params;
+  
+  const [targetUser, setTargetUser] = useState<UserProfile | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
@@ -29,7 +30,6 @@ export default function UserProfilePage() {
   const [likedPosts, setLikedPosts] = useState<CommunityPost[]>([]);
   const [isFollowing, setIsFollowing] = useState(false);
 
-
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
@@ -37,38 +37,38 @@ export default function UserProfilePage() {
         const currentUserRef = ref(db, `users/${user.uid}`);
         onValue(currentUserRef, (snapshot) => {
           if (snapshot.exists()) {
-            const profileData = { uid: snapshot.key, ...snapshot.val() };
-            setCurrentUserProfile(profileData);
-            // Check if current user is following the profile user
-            if (profileData.following && profileData.following[uid as string]) {
-              setIsFollowing(true);
-            } else {
-              setIsFollowing(false);
-            }
+            setCurrentUserProfile({ uid: snapshot.key, ...snapshot.val() });
           }
         });
       }
     });
+    return () => unsubscribeAuth();
+  }, []);
 
-    if (uid) {
-      const userRef = ref(db, `users/${uid}`);
-      const unsubscribeProfile = onValue(userRef, (snapshot) => {
-        if (snapshot.exists()) {
-          const profileData = { uid: snapshot.key, ...snapshot.val() };
-          profileData.followerCount = profileData.followers ? Object.keys(profileData.followers).length : 0;
-          profileData.followingCount = profileData.following ? Object.keys(profileData.following).length : 0;
-          setUserProfile(profileData);
-        } else {
-          console.error('User not found');
-        }
-        setLoading(false);
-      });
+  useEffect(() => {
+    if (typeof username !== 'string' || !username) return;
+    setLoading(true);
 
-      const postsQuery = query(ref(db, 'posts'), orderByChild('userId'), equalTo(uid as string));
-        onValue(postsQuery, (snapshot) => {
+    const usersRef = ref(db, 'users');
+    const userQuery = query(usersRef, orderByChild('username'), equalTo(`@${username.replace('@','')}`));
+    
+    const unsubscribeProfile = onValue(userQuery, (snapshot) => {
+      if (snapshot.exists()) {
+        const data = snapshot.val();
+        const userId = Object.keys(data)[0];
+        const profileData = { uid: userId, ...data[userId] };
+
+        profileData.followerCount = profileData.followers ? Object.keys(profileData.followers).length : 0;
+        profileData.followingCount = profileData.following ? Object.keys(profileData.following).length : 0;
+
+        setTargetUser(profileData);
+        
+        // Fetch posts for this user
+        const postsQuery = query(ref(db, 'posts'), orderByChild('userId'), equalTo(userId));
+        onValue(postsQuery, (postSnapshot) => {
             const userPosts: CommunityPost[] = [];
             const userReplies: CommunityPost[] = [];
-            snapshot.forEach(childSnapshot => {
+            postSnapshot.forEach(childSnapshot => {
                 const post = { id: childSnapshot.key, ...childSnapshot.val() };
                 if (post.parentId) {
                     userReplies.push(post);
@@ -79,29 +79,41 @@ export default function UserProfilePage() {
             setPosts(userPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
             setReplies(userReplies.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         });
-
-      const allPostsRef = ref(db, 'posts');
-        onValue(allPostsRef, (snapshot) => {
+        
+        // Fetch liked posts
+        const allPostsRef = ref(db, 'posts');
+        onValue(allPostsRef, (allPostsSnapshot) => {
             const allPosts: CommunityPost[] = [];
-             snapshot.forEach(childSnapshot => {
+             allPostsSnapshot.forEach(childSnapshot => {
                 allPosts.push({ id: childSnapshot.key, ...childSnapshot.val() });
             });
-            const userLikedPosts = allPosts.filter(post => post.likes && post.likes[uid as string]);
+            const userLikedPosts = allPosts.filter(post => post.likes && post.likes[userId]);
             setLikedPosts(userLikedPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()));
         });
-      
-       return () => {
-         unsubscribeAuth();
-         unsubscribeProfile();
-       }
+
+      } else {
+        setTargetUser(null);
+      }
+      setLoading(false);
+    });
+
+    return () => unsubscribeProfile();
+  }, [username]);
+
+  useEffect(() => {
+    if (currentUserProfile && targetUser) {
+      setIsFollowing(!!(currentUserProfile.following && currentUserProfile.following[targetUser.uid]));
+    } else {
+      setIsFollowing(false);
     }
-  }, [uid]);
+  }, [currentUserProfile, targetUser]);
+
 
   const handleFollowToggle = async () => {
-    if (!currentUser || !userProfile || !currentUserProfile) return;
+    if (!currentUser || !targetUser || !currentUserProfile) return;
 
     const currentUserId = currentUser.uid;
-    const targetUserId = userProfile.uid;
+    const targetUserId = targetUser.uid;
 
     const updates: { [key: string]: any } = {};
 
@@ -114,17 +126,20 @@ export default function UserProfilePage() {
       updates[`/users/${currentUserId}/following/${targetUserId}`] = true;
       updates[`/users/${targetUserId}/followers/${currentUserId}`] = true;
 
-      // Create notification
-      const notificationRef = push(ref(db, `notifications/${targetUserId}`));
-      const newNotification = {
-          id: notificationRef.key,
-          type: 'follow',
-          fromUserId: currentUserId,
-          fromUserName: currentUserProfile.name,
-          timestamp: new Date().toISOString(),
-          read: false,
-      };
-      updates[`/notifications/${targetUserId}/${notificationRef.key}`] = newNotification;
+      // Create notification only if not following yourself
+      if(currentUserId !== targetUserId) {
+        const notificationRef = push(ref(db, `notifications/${targetUserId}`));
+        const newNotification = {
+            id: notificationRef.key,
+            type: 'follow',
+            fromUserId: currentUserId,
+            fromUserName: currentUserProfile.name,
+            fromUserUsername: currentUserProfile.username,
+            timestamp: new Date().toISOString(),
+            read: false,
+        };
+        updates[`/notifications/${targetUserId}/${notificationRef.key}`] = newNotification;
+      }
     }
 
     try {
@@ -140,7 +155,7 @@ export default function UserProfilePage() {
     if (names.length > 1) {
       return names[0][0] + names[names.length - 1][0];
     }
-    return name[0];
+    return name ? name[0] : '';
   };
 
   if (loading) {
@@ -151,7 +166,7 @@ export default function UserProfilePage() {
     );
   }
 
-  if (!userProfile) {
+  if (!targetUser) {
     return (
       <div className="flex justify-center items-center h-screen">
         <div className="text-center">
@@ -165,21 +180,21 @@ export default function UserProfilePage() {
     );
   }
 
-  const isOwnProfile = currentUser?.uid === uid;
+  const isOwnProfile = currentUser?.uid === targetUser.uid;
   
   const PostList = ({ postsToShow }: { postsToShow: CommunityPost[] }) => (
     <div className="space-y-4 mt-4">
         {postsToShow.length > 0 ? postsToShow.map(post => (
             <Card key={post.id} className="p-4">
                  <div className="flex items-start space-x-4">
-                      <Link href={`/profile/${post.userId}`}>
+                      <Link href={`/profile/${post.username.replace('@','')}`}>
                         <Avatar>
                           <AvatarFallback>{getInitials(post.author)}</AvatarFallback>
                         </Avatar>
                       </Link>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
+                           <Link href={`/profile/${post.username.replace('@','')}`} className="flex items-center hover:underline">
                             <p className="font-semibold text-primary">{post.author}</p>
                             {post.username === '@Rulio' && <VerifiedBadge />}
                             <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
@@ -220,7 +235,7 @@ export default function UserProfilePage() {
              <div className="flex justify-between items-start">
                 <Avatar className="-mt-16 h-28 w-28 border-4 border-background bg-card">
                   <AvatarFallback className="text-4xl">
-                    {getInitials(userProfile.name)}
+                    {getInitials(targetUser.name)}
                   </AvatarFallback>
                 </Avatar>
                 {isOwnProfile ? (
@@ -229,7 +244,7 @@ export default function UserProfilePage() {
                     Editar Perfil
                   </Button>
                 ) : (
-                   <Button onClick={handleFollowToggle} variant={isFollowing ? 'secondary' : 'default'}>
+                   <Button onClick={handleFollowToggle} variant={isFollowing ? 'secondary' : 'default'} disabled={!currentUser}>
                     {isFollowing ? <UserCheck className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
                     {isFollowing ? 'Seguindo' : 'Seguir'}
                   </Button>
@@ -237,17 +252,17 @@ export default function UserProfilePage() {
              </div>
              <div className="mt-4">
                 <div className="flex items-center gap-1">
-                    <h2 className="text-2xl font-bold">{userProfile.name}</h2>
-                    {userProfile.username === '@Rulio' && <VerifiedBadge />}
+                    <h2 className="text-2xl font-bold">{targetUser.name}</h2>
+                    {targetUser.username === '@Rulio' && <VerifiedBadge />}
                 </div>
-                <p className="text-md text-muted-foreground">{userProfile.username}</p>
+                <p className="text-md text-muted-foreground">{targetUser.username}</p>
              </div>
              <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
                 <div>
-                  <span className="font-bold text-foreground">{userProfile.followingCount || 0}</span> Seguindo
+                  <span className="font-bold text-foreground">{targetUser.followingCount || 0}</span> Seguindo
                 </div>
                 <div>
-                   <span className="font-bold text-foreground">{userProfile.followerCount || 0}</span> Seguidores
+                   <span className="font-bold text-foreground">{targetUser.followerCount || 0}</span> Seguidores
                 </div>
              </div>
           </div>

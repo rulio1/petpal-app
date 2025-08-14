@@ -55,7 +55,7 @@ export default function SearchPage() {
     if (names.length > 1) {
       return names[0][0] + names[names.length - 1][0];
     }
-    return name[0];
+    return name ? name[0] : '';
   }
 
 
@@ -82,7 +82,7 @@ export default function SearchPage() {
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6">
           {filteredUsers.map(user => (
-            <Link href={`/profile/${user.uid}`} key={user.uid}>
+            <Link href={`/profile/${user.username.replace('@','')}`} key={user.uid}>
               <Card className="text-center hover:shadow-lg transition-shadow duration-300 h-full">
                 <CardContent className="p-6 flex flex-col items-center justify-center">
                   <Avatar className="h-20 w-20 mx-auto mb-4">

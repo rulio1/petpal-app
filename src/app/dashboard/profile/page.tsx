@@ -24,8 +24,8 @@ import {
 import { PawPrint } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, User } from 'firebase/auth';
-import { ref, update } from 'firebase/database';
+import { onAuthStateChanged, User, updateProfile } from 'firebase/auth';
+import { ref, update, get } from 'firebase/database';
 import { useRouter } from 'next/navigation';
 
 const profileFormSchema = z.object({
@@ -55,13 +55,19 @@ export default function ProfilePage() {
   });
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
       if (currentUser) {
         setUser(currentUser);
-        form.reset({
-            name: currentUser.displayName || '',
-            username: ''
-        })
+        // Fetch current profile from DB to populate form
+        const userRef = ref(db, `users/${currentUser.uid}`);
+        const snapshot = await get(userRef);
+        if (snapshot.exists()) {
+            const data = snapshot.val();
+            form.reset({
+                name: data.name || currentUser.displayName || '',
+                username: data.username || ''
+            });
+        }
       } else {
         router.push('/');
       }
@@ -85,13 +91,16 @@ export default function ProfilePage() {
       updates[`/users/${user.uid}/name`] = data.name;
       updates[`/users/${user.uid}/username`] = data.username;
 
+      // Update auth profile as well
+      await updateProfile(user, { displayName: data.name });
+
       await update(ref(db), updates);
 
       toast({
         title: 'Perfil Atualizado!',
         description: 'Suas informações foram salvas com sucesso.',
       });
-       router.push(`/profile/${user.uid}`);
+       router.push(`/profile/${data.username.replace('@','')}`);
     } catch (error: any) {
       console.error('Erro ao atualizar perfil:', error);
       toast({
