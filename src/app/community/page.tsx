@@ -152,16 +152,33 @@ export default function CommunityPage() {
     }
   };
 
-  const handleLike = async (postId: string) => {
-    if (!user) return;
+  const handleLike = async (post: CommunityPost) => {
+    if (!user || !userProfile) return;
+    const postId = post.id;
     const postRef = ref(db, `posts/${postId}/likes/${user.uid}`);
     const postLikeSnap = await get(postRef);
     const updates: { [key: string]: any } = {};
+    const alreadyLiked = postLikeSnap.exists();
 
-    if (postLikeSnap.exists()) {
+    if (alreadyLiked) {
       updates[`/posts/${postId}/likes/${user.uid}`] = null;
     } else {
       updates[`/posts/${postId}/likes/${user.uid}`] = true;
+      // Send notification only when liking, not unliking
+      // and don't notify if you like your own post
+      if (post.userId !== user.uid) {
+        const notificationRef = push(ref(db, `notifications/${post.userId}`));
+        const newNotification = {
+            id: notificationRef.key,
+            type: 'like',
+            fromUserId: user.uid,
+            fromUserName: userProfile.name,
+            postId: postId,
+            timestamp: new Date().toISOString(),
+            read: false,
+        };
+        updates[`/notifications/${post.userId}/${notificationRef.key}`] = newNotification;
+      }
     }
     await update(ref(db), updates);
   };
@@ -270,7 +287,7 @@ export default function CommunityPage() {
                         </div>
                         <p className="text-sm mt-1 whitespace-pre-wrap">{post.content}</p>
                         <div className="flex items-center gap-6 text-muted-foreground mt-4">
-                            <button onClick={() => handleLike(post.id)} className="flex items-center gap-1 group disabled:opacity-50" disabled={!user}>
+                            <button onClick={() => handleLike(post)} className="flex items-center gap-1 group disabled:opacity-50" disabled={!user}>
                                 <Heart className={`w-4 h-4 group-hover:text-red-500 ${post.likes && user && post.likes[user.uid] ? 'text-red-500 fill-current' : ''}`} />
                                 <span className="text-xs">{post.likes ? Object.keys(post.likes).length : 0}</span>
                             </button>

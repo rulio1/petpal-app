@@ -5,7 +5,7 @@ import { db, auth } from '@/lib/firebase';
 import { ref, onValue, update } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { Notification } from '@/lib/types';
-import { Bell, UserPlus } from 'lucide-react';
+import { Bell, UserPlus, Heart } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
@@ -25,7 +25,7 @@ export default function NotificationsPage() {
           const data = snapshot.val();
           const notificationList: Notification[] = [];
           if (data) {
-            Object.keys(data).map(key => {
+            Object.keys(data).forEach(key => {
               notificationList.push({ id: key, ...data[key] });
             });
             // Sort by most recent
@@ -36,6 +36,7 @@ export default function NotificationsPage() {
         });
         return () => unsubscribeNotifications();
       } else {
+        setNotifications([]);
         setLoading(false);
       }
     });
@@ -49,6 +50,21 @@ export default function NotificationsPage() {
     updates[`/notifications/${currentUser.uid}/${notificationId}/read`] = true;
     await update(ref(db), updates);
   };
+  
+  const getNotificationLink = (notification: Notification) => {
+    switch (notification.type) {
+        case 'follow':
+            return `/profile/${notification.fromUserId}`;
+        case 'like':
+        case 'reply':
+            // This would ideally link to the specific post, which requires more complex state management
+            // For now, we can link to the community page or the user's profile.
+            return `/community`; 
+        default:
+            return '#';
+    }
+  }
+
 
   const renderNotification = (notification: Notification) => {
     switch (notification.type) {
@@ -58,7 +74,7 @@ export default function NotificationsPage() {
             <UserPlus className="h-6 w-6 text-primary" />
             <div className="flex-1">
               <p>
-                <Link href={`/profile/${notification.fromUserId}`} className="font-bold hover:underline">{notification.fromUserName}</Link>
+                <Link href={`/profile/${notification.fromUserId}`} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
                 {' '} começou a seguir você.
               </p>
               <p className="text-xs text-muted-foreground">
@@ -67,7 +83,21 @@ export default function NotificationsPage() {
             </div>
           </>
         );
-      // Cases for 'like' and 'reply' can be added here
+      case 'like':
+        return (
+           <>
+            <Heart className="h-6 w-6 text-red-500" />
+            <div className="flex-1">
+              <p>
+                <Link href={`/profile/${notification.fromUserId}`} className="font-bold hover:underline" onClick={(e) => e.stopPropagation()}>{notification.fromUserName}</Link>
+                {' '} curtiu sua publicação.
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {formatDistanceToNow(new Date(notification.timestamp), { addSuffix: true, locale: ptBR })}
+              </p>
+            </div>
+          </>
+        );
       default:
         return null;
     }
@@ -80,20 +110,22 @@ export default function NotificationsPage() {
       </div>
       
       {loading ? (
-        <div className="text-center py-16">
-          <Bell className="h-12 w-12 text-muted-foreground animate-pulse" />
+        <div className="flex justify-center items-center h-64">
+           <Bell className="h-12 w-12 text-muted-foreground animate-pulse" />
         </div>
       ) : notifications.length > 0 ? (
         <div className="space-y-4">
           {notifications.map((notification) => (
-            <Card key={notification.id} 
-                  className={`p-4 transition-colors ${notification.read ? 'bg-card' : 'bg-secondary'}`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
-            >
-              <CardContent className="flex items-center gap-4 p-0">
-                {renderNotification(notification)}
-              </CardContent>
-            </Card>
+            <Link href={getNotificationLink(notification)} key={notification.id} passHref>
+                <Card 
+                    className={`p-4 transition-colors cursor-pointer hover:bg-muted/80 ${notification.read ? 'bg-card' : 'bg-secondary'}`}
+                    onClick={() => !notification.read && markAsRead(notification.id)}
+                >
+                    <CardContent className="flex items-center gap-4 p-0">
+                        {renderNotification(notification)}
+                    </CardContent>
+                </Card>
+            </Link>
           ))}
         </div>
       ) : (
