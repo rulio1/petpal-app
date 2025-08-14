@@ -40,6 +40,9 @@ export default function SearchPage() {
   }, []);
 
   const filteredUsers = useMemo(() => {
+    if (!searchTerm) {
+        return users;
+    }
     return users.filter(user =>
         user.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         user.username?.toLowerCase().includes(searchTerm.toLowerCase())

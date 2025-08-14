@@ -18,7 +18,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint, Heart, Repeat, MessageSquare, Globe } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild, get, update, increment } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, get, update } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { VerifiedBadge } from '@/components/verified-badge';
 import Link from 'next/link';
@@ -216,18 +216,23 @@ export default function CommunityPage() {
                       <FormItem>
                         <FormControl>
                           <Textarea
-                            placeholder="O que você está pensando? Compartilhe dicas, histórias ou faça perguntas..."
+                            placeholder={user ? "O que você está pensando? Compartilhe dicas, histórias ou faça perguntas..." : "Faça login para compartilhar suas ideias."}
                             className="resize-none"
                             rows={5}
                             {...field}
+                            disabled={!user}
                           />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                  <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !userProfile}>
-                    {form.formState.isSubmitting ? <PawPrint className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
+                  <Button type="submit" className="w-full" disabled={form.formState.isSubmitting || !user}>
+                    {form.formState.isSubmitting ? (
+                      <PawPrint className="mr-2 h-4 w-4 animate-spin" />
+                    ) : user ? (
+                      <Send className="mr-2 h-4 w-4" />
+                    ) : null}
                     {user ? 'Publicar na Comunidade' : 'Faça login para publicar'}
                   </Button>
                 </form>
