@@ -1,15 +1,12 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Card,
-  CardContent
-} from '@/components/ui/card';
+import { Card, CardContent } from '@/components/ui/card';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -18,7 +15,7 @@ import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import { Send, PawPrint, Heart, Repeat, MessageSquare, Globe, MoreHorizontal, Trash2, Edit } from 'lucide-react';
 import { db, auth } from '@/lib/firebase';
-import { ref, push, set, onValue, query, orderByChild, get, update, remove } from "firebase/database";
+import { ref, push, set, onValue, query, orderByChild, update, remove, get } from "firebase/database";
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { VerifiedBadge } from '@/components/verified-badge';
 import Link from 'next/link';
@@ -44,11 +41,12 @@ const postSchema = z.object({
 });
 
 interface PostWithUser extends CommunityPost {
-    username?: string;
+    authorProfile?: UserProfile;
 }
 
 export default function CommunityPage() {
-  const [posts, setPosts] = useState<PostWithUser[]>([]);
+  const [rawPosts, setRawPosts] = useState<CommunityPost[]>([]);
+  const [users, setUsers] = useState<{ [key: string]: UserProfile }>({});
   const [loading, setLoading] = useState(true);
   const [user, setUser] = useState<User | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
@@ -70,28 +68,25 @@ export default function CommunityPage() {
         setUserProfile(null);
       }
     });
+    
+    // Fetch all users once and listen for updates
+    const usersRef = ref(db, 'users');
+    const unsubscribeUsers = onValue(usersRef, (snapshot) => {
+      setUsers(snapshot.val() || {});
+    });
 
     const postsRef = query(ref(db, 'posts'), orderByChild('timestamp'));
-    const unsubscribePosts = onValue(postsRef, async (snapshot) => {
+    const unsubscribePosts = onValue(postsRef, (snapshot) => {
       const data = snapshot.val();
-      const postList: PostWithUser[] = [];
+      const postList: CommunityPost[] = [];
       if (data) {
-        const postPromises = Object.keys(data).map(async (key) => {
-          const post = { id: key, ...data[key] };
-          if (post.userId) {
-            const userRef = ref(db, 'users/' + post.userId);
-            const userSnap = await get(userRef);
-            if (userSnap.exists()) {
-                post.username = userSnap.val().username;
-            }
-          }
-          return post;
+         Object.keys(data).forEach(key => {
+            postList.push({ id: key, ...data[key] });
         });
-        const resolvedPosts = await Promise.all(postPromises);
-        resolvedPosts.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
-        setPosts(resolvedPosts);
+        postList.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+        setRawPosts(postList);
       } else {
-        setPosts([]);
+        setRawPosts([]);
       }
       setLoading(false);
     }, (error) => {
@@ -107,8 +102,16 @@ export default function CommunityPage() {
     return () => {
       unsubscribeAuth();
       unsubscribePosts();
+      unsubscribeUsers();
     };
   }, [toast]);
+  
+  const posts: PostWithUser[] = useMemo(() => {
+    return rawPosts.map(post => ({
+        ...post,
+        authorProfile: users[post.userId]
+    }));
+  }, [rawPosts, users]);
 
   const form = useForm<{ content: string }>({
     resolver: zodResolver(postSchema),
@@ -123,8 +126,8 @@ export default function CommunityPage() {
     try {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
-        author: userProfile.name,
-        username: userProfile.username,
+        author: userProfile.name, // this might become stale if user changes name
+        username: userProfile.username, // this might become stale if user changes name
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
@@ -184,7 +187,7 @@ export default function CommunityPage() {
   };
 
 
-  const getInitials = (name: string) => {
+  const getInitials = (name: string | undefined) => {
     if (!name) return 'U';
     const names = name.split(' ');
     if (names.length > 1) {
@@ -212,19 +215,23 @@ export default function CommunityPage() {
                 posts.map((post) => (
                   <Card key={post.id} className="p-4 bg-card/80">
                     <div className="flex items-start space-x-4">
-                      <Link href={`/profile/${post.userId}`}>
+                       <Link href={`/profile/${post.userId}`}>
                         <Avatar>
-                          <AvatarFallback>{getInitials(post.author)}</AvatarFallback>
+                          <AvatarFallback>{getInitials(post.authorProfile?.name)}</AvatarFallback>
                         </Avatar>
                       </Link>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center">
+                            {post.authorProfile ? (
                             <Link href={`/profile/${post.userId}`} className="flex items-center hover:underline">
-                                <p className="font-semibold text-primary">{post.author}</p>
-                                {post.username === '@Rulio' && <VerifiedBadge />}
-                                <p className="text-sm text-muted-foreground ml-2">{post.username}</p>
+                                <p className="font-semibold text-primary">{post.authorProfile.name}</p>
+                                {post.authorProfile.username === '@Rulio' && <VerifiedBadge />}
+                                <p className="text-sm text-muted-foreground ml-2">{post.authorProfile.username}</p>
                             </Link>
+                            ) : (
+                                 <p className="font-semibold text-primary">Usuário anônimo</p>
+                            )}
                             <div className="flex items-center gap-2 ml-4">
                                 <Globe className="w-3 h-3 text-muted-foreground" />
                                 <p className="text-xs text-muted-foreground">
