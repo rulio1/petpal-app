@@ -7,7 +7,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent } from '@/components/ui/card';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Form, FormControl, FormField, FormItem, FormMessage } from '@/components/ui/form';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import type { CommunityPost, UserProfile } from '@/lib/types';
@@ -94,7 +94,6 @@ export default function CommunityPage() {
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
-        avatarUrl: ''
       };
       await set(newPostRef, newPost);
       form.reset();
