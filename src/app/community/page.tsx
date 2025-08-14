@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -68,8 +69,7 @@ export default function CommunityPage() {
         setUserProfile(null);
       }
     });
-    
-    // Fetch all users once and listen for updates
+
     const usersRef = ref(db, 'users');
     const unsubscribeUsers = onValue(usersRef, (snapshot) => {
       setUsers(snapshot.val() || {});
@@ -120,14 +120,18 @@ export default function CommunityPage() {
 
   const onSubmit = async (data: { content: string }) => {
      if (!user || !userProfile) {
-      console.error("User not logged in or profile not loaded");
+      toast({
+          variant: 'destructive',
+          title: 'Não autenticado',
+          description: 'Você precisa fazer login para publicar.',
+      });
       return;
     }
     try {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
-        author: userProfile.name, // this might become stale if user changes name
-        username: userProfile.username, // this might become stale if user changes name
+        author: userProfile.name,
+        username: userProfile.username,
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
@@ -140,6 +144,11 @@ export default function CommunityPage() {
       form.reset();
     } catch (error) {
         console.error("Could not save post to Firebase", error);
+        toast({
+            variant: 'destructive',
+            title: 'Erro ao Publicar',
+            description: 'Não foi possível salvar a publicação. Tente novamente.',
+        });
     }
   };
 
@@ -230,7 +239,7 @@ export default function CommunityPage() {
                                 <p className="text-sm text-muted-foreground ml-2">{post.authorProfile.username}</p>
                             </Link>
                             ) : (
-                                 <p className="font-semibold text-primary">Usuário anônimo</p>
+                                 <p className="font-semibold text-primary">{post.author || 'Usuário anônimo'}</p>
                             )}
                             <div className="flex items-center gap-2 ml-4">
                                 <Globe className="w-3 h-3 text-muted-foreground" />
@@ -357,3 +366,5 @@ export default function CommunityPage() {
     </>
   );
 }
+
+    
