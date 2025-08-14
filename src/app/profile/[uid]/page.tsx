@@ -3,16 +3,15 @@
 import { useEffect, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { db, auth } from '@/lib/firebase';
-import { ref, onValue, query, orderByChild, equalTo } from 'firebase/database';
+import { ref, onValue, query, orderByChild, equalTo, update, push, set } from 'firebase/database';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import type { UserProfile, CommunityPost, Pet } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader } from '@/components/ui/card';
-import { PawPrint, Edit, Heart, MessageSquare, Repeat } from 'lucide-react';
+import { PawPrint, Edit, Heart, MessageSquare, Repeat, UserPlus, UserCheck } from 'lucide-react';
 import { VerifiedBadge } from '@/components/verified-badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PetCard } from '@/components/pet-card';
 import { formatDistanceToNow } from 'date-fns';
 import { ptBR } from 'date-fns/locale';
 import Link from 'next/link';
@@ -23,23 +22,42 @@ export default function UserProfilePage() {
   const { uid } = params;
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
+  const [currentUserProfile, setCurrentUserProfile] = useState<UserProfile | null>(null);
   const [loading, setLoading] = useState(true);
   const [posts, setPosts] = useState<CommunityPost[]>([]);
   const [replies, setReplies] = useState<CommunityPost[]>([]);
   const [likedPosts, setLikedPosts] = useState<CommunityPost[]>([]);
-  const [userPets, setUserPets] = useState<Pet[]>([]);
+  const [isFollowing, setIsFollowing] = useState(false);
 
 
   useEffect(() => {
     const unsubscribeAuth = onAuthStateChanged(auth, (user) => {
       setCurrentUser(user);
+      if (user) {
+        const currentUserRef = ref(db, `users/${user.uid}`);
+        onValue(currentUserRef, (snapshot) => {
+          if (snapshot.exists()) {
+            const profileData = { uid: snapshot.key, ...snapshot.val() };
+            setCurrentUserProfile(profileData);
+            // Check if current user is following the profile user
+            if (profileData.following && profileData.following[uid as string]) {
+              setIsFollowing(true);
+            } else {
+              setIsFollowing(false);
+            }
+          }
+        });
+      }
     });
 
     if (uid) {
       const userRef = ref(db, `users/${uid}`);
       const unsubscribeProfile = onValue(userRef, (snapshot) => {
         if (snapshot.exists()) {
-          setUserProfile({ uid: snapshot.key, ...snapshot.val() });
+          const profileData = { uid: snapshot.key, ...snapshot.val() };
+          profileData.followerCount = profileData.followers ? Object.keys(profileData.followers).length : 0;
+          profileData.followingCount = profileData.following ? Object.keys(profileData.following).length : 0;
+          setUserProfile(profileData);
         } else {
           console.error('User not found');
         }
@@ -78,6 +96,43 @@ export default function UserProfilePage() {
        }
     }
   }, [uid]);
+
+  const handleFollowToggle = async () => {
+    if (!currentUser || !userProfile || !currentUserProfile) return;
+
+    const currentUserId = currentUser.uid;
+    const targetUserId = userProfile.uid;
+
+    const updates: { [key: string]: any } = {};
+
+    if (isFollowing) {
+      // Unfollow
+      updates[`/users/${currentUserId}/following/${targetUserId}`] = null;
+      updates[`/users/${targetUserId}/followers/${currentUserId}`] = null;
+    } else {
+      // Follow
+      updates[`/users/${currentUserId}/following/${targetUserId}`] = true;
+      updates[`/users/${targetUserId}/followers/${currentUserId}`] = true;
+
+      // Create notification
+      const notificationRef = push(ref(db, `notifications/${targetUserId}`));
+      const newNotification = {
+          id: notificationRef.key,
+          type: 'follow',
+          fromUserId: currentUserId,
+          fromUserName: currentUserProfile.name,
+          timestamp: new Date().toISOString(),
+          read: false,
+      };
+      updates[`/notifications/${targetUserId}/${notificationRef.key}`] = newNotification;
+    }
+
+    try {
+      await update(ref(db), updates);
+    } catch (error) {
+        console.error("Failed to update follow status", error);
+    }
+  };
 
   const getInitials = (name: string | undefined) => {
     if (!name) return '';
@@ -168,10 +223,15 @@ export default function UserProfilePage() {
                     {getInitials(userProfile.name)}
                   </AvatarFallback>
                 </Avatar>
-                {isOwnProfile && (
+                {isOwnProfile ? (
                   <Button onClick={() => router.push('/dashboard/profile')}>
                     <Edit className="mr-2 h-4 w-4" />
                     Editar Perfil
+                  </Button>
+                ) : (
+                   <Button onClick={handleFollowToggle} variant={isFollowing ? 'secondary' : 'default'}>
+                    {isFollowing ? <UserCheck className="mr-2 h-4 w-4" /> : <UserPlus className="mr-2 h-4 w-4" />}
+                    {isFollowing ? 'Seguindo' : 'Seguir'}
                   </Button>
                 )}
              </div>
@@ -181,6 +241,14 @@ export default function UserProfilePage() {
                     {userProfile.username === '@Rulio' && <VerifiedBadge />}
                 </div>
                 <p className="text-md text-muted-foreground">{userProfile.username}</p>
+             </div>
+             <div className="flex items-center gap-4 mt-4 text-sm text-muted-foreground">
+                <div>
+                  <span className="font-bold text-foreground">{userProfile.followingCount || 0}</span> Seguindo
+                </div>
+                <div>
+                   <span className="font-bold text-foreground">{userProfile.followerCount || 0}</span> Seguidores
+                </div>
              </div>
           </div>
         </CardHeader>

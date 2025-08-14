@@ -34,4 +34,18 @@ export interface UserProfile {
   name: string;
   username: string;
   email: string;
+  followers?: { [key: string]: boolean };
+  following?: { [key: string]: boolean };
+  followerCount?: number;
+  followingCount?: number;
+}
+
+export interface Notification {
+  id: string;
+  type: 'follow' | 'like' | 'reply';
+  fromUserId: string;
+  fromUserName: string;
+  timestamp: string;
+  read: boolean;
+  postId?: string; // for likes and replies
 }
