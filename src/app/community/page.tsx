@@ -80,7 +80,6 @@ export default function CommunityPage() {
       const newPostRef = push(ref(db, 'posts'));
       const newPost: Omit<CommunityPost, 'id'> = {
         author: userProfile.name,
-        avatarUrl: '', // Removed avatarUrl functionality
         timestamp: new Date().toISOString(),
         content: data.content,
         userId: user.uid,
