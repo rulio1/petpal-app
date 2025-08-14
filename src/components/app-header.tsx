@@ -6,13 +6,13 @@ import { PawPrint, Users, LayoutDashboard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useEffect, useState } from 'react';
 import { onAuthStateChanged, signOut, User } from 'firebase/auth';
 import { auth, db } from '@/lib/firebase';
 import { ref, onValue } from 'firebase/database';
-import { UserProfile } from '@/lib/types';
+import type { UserProfile } from '@/lib/types';
 
 
 const navLinks = [
@@ -89,13 +89,13 @@ export function AppHeader() {
               <PopoverTrigger asChild>
                 <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                   <Avatar className="h-9 w-9">
-                    <AvatarFallback>{getInitials(user.displayName)}</AvatarFallback>
+                    <AvatarFallback>{getInitials(userProfile?.name)}</AvatarFallback>
                   </Avatar>
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-56" align="end" forceMount>
                 <div className="flex flex-col space-y-2 text-center leading-none">
-                  <p className="text-sm font-medium">{user.displayName}</p>
+                  <p className="text-sm font-medium">{userProfile?.name}</p>
                    <p className="text-xs text-muted-foreground">{userProfile?.username}</p>
                 </div>
                 <Separator className="my-2" />

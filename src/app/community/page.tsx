@@ -111,7 +111,6 @@ export default function CommunityPage() {
                   <Card key={post.id} className="p-4 bg-card/80">
                     <div className="flex items-start space-x-4">
                       <Avatar>
-                        <AvatarImage src={post.avatarUrl} alt={post.author} data-ai-hint="person avatar"/>
                         <AvatarFallback>{post.author.charAt(0)}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">

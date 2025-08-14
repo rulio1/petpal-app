@@ -11,8 +11,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { PawPrint } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { auth, db } from '@/lib/firebase';
-import { onAuthStateChanged, updateProfile, User } from 'firebase/auth';
-import { ref, set, get, update } from "firebase/database";
+import { onAuthStateChanged, User } from 'firebase/auth';
+import { ref, get, update } from "firebase/database";
 import type { UserProfile } from '@/lib/types';
 
 const profileFormSchema = z.object({
@@ -35,25 +35,25 @@ export default function ProfilePage() {
       username: '',
     },
   });
-
+  
   const loadUserData = useCallback((currentUser: User) => {
+    setIsLoading(true);
     const userRef = ref(db, `users/${currentUser.uid}`);
     get(userRef).then((snapshot) => {
       if (snapshot.exists()) {
-        const data = snapshot.val() as Omit<UserProfile, 'email' | 'uid'>;
+        const data = snapshot.val();
         form.reset({
           name: data.name || currentUser.displayName || '',
           username: data.username || '',
         });
       } else {
-        // If no data in DB, use Auth data as fallback
         form.reset({
           name: currentUser.displayName || '',
           username: '',
         });
       }
       setIsLoading(false);
-    });
+    }).catch(() => setIsLoading(false));
   }, [form]);
 
   useEffect(() => {
@@ -78,19 +78,10 @@ export default function ProfilePage() {
     setIsSubmitting(true);
     
     try {
-      // 1. Update Firebase Auth display name (important for other services)
-      if (user.displayName !== data.name) {
-        await updateProfile(user, { 
-          displayName: data.name,
-        });
-      }
-
-      // 2. Prepare data for a single, atomic update to Realtime Database
       const updates: { [key: string]: any } = {};
       updates[`/users/${user.uid}/name`] = data.name;
       updates[`/users/${user.uid}/username`] = data.username;
       
-      // 3. Execute the atomic update
       await update(ref(db), updates);
       
       toast({
@@ -103,7 +94,7 @@ export default function ProfilePage() {
         toast({
             variant: "destructive",
             title: "Falha ao atualizar",
-            description: `Ocorreu um erro ao atualizar seu perfil. Verifique as regras do banco de dados e tente novamente. Código: ${error.code}`,
+            description: `Ocorreu um erro ao atualizar seu perfil. Verifique as regras do banco de dados e tente novamente.`,
         });
     } finally {
         setIsSubmitting(false);
@@ -166,19 +157,12 @@ export default function ProfilePage() {
                   </FormItem>
                 )}
               />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="seu@email.com" value={user?.email || ''} disabled />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormItem>
+                <FormLabel>Email</FormLabel>
+                <FormControl>
+                  <Input placeholder="seu@email.com" value={user?.email || ''} disabled />
+                </FormControl>
+              </FormItem>
               <div className="flex justify-end">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting && <PawPrint className="mr-2 h-4 w-4 animate-spin" />}
